@@ -247,7 +247,7 @@ input,select,textarea,.inp{font-size:max(16px,1rem)!important}
 <nav id="tabs" class="tabs" aria-label="主导航"></nav>
 <input type="file" id="fileIn" hidden>
 <input type="file" id="photoIn" accept="image/*" hidden>
-<script>window.LEDGER_PWA=true;window.LEDGER_VERSION="2026.11.06-1313";</script>
+<script>window.LEDGER_PWA=true;window.LEDGER_VERSION="2026.11.06-1324";</script>
 <script>
 const I18N_EN = {
 "存储空间已满，请先删除一些旧记录": "Storage is full — delete some old records first",
@@ -1217,7 +1217,7 @@ const Core = (() => {
     }
     // 4) 小票：第一行一般是店名
     if (!out.merchant && lines[0] && lines[0].length <= 20 && okName(lines[0])) out.merchant = lines[0];
-    out.merchant = out.merchant.replace(/[>›»]+$/, "").trim().slice(0, 30);
+    out.merchant = out.merchant.replace(/[>›»]+$/, "").replace(/\s*([（）()：:·・\-–—])\s*/g, "$1").replace(/([㐀-鿿])\s+(?=[㐀-鿿])/g, "$1").trim().slice(0, 30);
     const pm = text.match(/(?:支付方式|付款方式)[：]?[ \t]*([^\n]{2,20})/) || text.match(/(零钱通|零钱|花呗|余额宝|账户余额|信用卡|储蓄卡|借记卡)/);
     if (pm) out.pay = pm[1].trim();
     const dm = text.match(/(20\d{2})[-/.年](\d{1,2})[-/.月](\d{1,2})/);
@@ -1228,6 +1228,16 @@ const Core = (() => {
     if (out.pay && /零钱/.test(out.pay)) out.pay = "微信 " + out.pay;
     if (out.pay && /(花呗|余额宝|账户余额)/.test(out.pay)) out.pay = "支付宝 " + out.pay;
     return out;
+  }
+
+  /** 只认数字的识别结果里找金额：整段必须像 -23.80 / ¥19.90 / 45.00；优先带符号的，其次最大的 */
+  function amountFromDigits(raw) {
+    const toks = String(raw || "").replace(/(\d)\s*[,，]\s*(\d{2})(?!\d)/g, "$1.$2").split(/\s+/).map((t) => t.replace(/^[,.]+|[,]+$/g, ""));
+    const money = toks.filter((t) => /^[-+¥]?\d{1,7}\.\d{2}$/.test(t));
+    if (!money.length) return null;
+    const signed = money.filter((t) => /^[-+¥]/.test(t));
+    const pick = (signed.length ? signed : money).map((t) => ({ t, v: parseYuan(t.replace(/^[-+¥]/, "")) })).sort((a, b) => b.v - a.v)[0];
+    return { amount: pick.v, income: pick.t.startsWith("+") };
   }
 
   /* ---------- CSV ---------- */
@@ -1317,7 +1327,7 @@ const Core = (() => {
   return {
     setL, ACCT_TYPES, TYPE_NAMES, uid, parseYuan, evalExpr, fmt, pad, ymd, ymOf, addMonths, daysInMonth, monthsBetween,
     defaultMeta, normalizeMeta, acctById, catById, isLiab, live, balances, netWorth, lines, sum, groupSum, monthSummary,
-    linked, refundable, pendingReimb, aaGroups, aaSplit, budgetStatus, dueRecurring, occurrences, autoTxs, addDays, categoryChanges, validate, parseQuick, parseReceipt, toCSV, parseCSV, importCSV,
+    linked, refundable, pendingReimb, aaGroups, aaSplit, budgetStatus, dueRecurring, occurrences, autoTxs, addDays, categoryChanges, validate, parseQuick, parseReceipt, amountFromDigits, toCSV, parseCSV, importCSV,
   };
 })();
 if (typeof module !== "undefined") module.exports = Core;
@@ -2471,6 +2481,19 @@ async function prepForOcr(file) {
     return await new Promise((r) => c.toBlob((b) => r(b || file), "image/png"));
   } catch (e) { return file; }
 }
+async function scaledGray(file, k) {
+  try {
+    const bmp = await createImageBitmap(file);
+    const c = document.createElement("canvas"); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(bmp, 0, 0, c.width, c.height);
+    const im = g.getImageData(0, 0, c.width, c.height), p = im.data; let sum = 0;
+    for (let i = 0; i < p.length; i += 4) sum += 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2];
+    const dark = sum / (p.length / 4) < 110;
+    for (let i = 0; i < p.length; i += 4) { let y = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]; if (dark) y = 255 - y; p[i] = p[i + 1] = p[i + 2] = y; }
+    g.putImageData(im, 0, 0);
+    return await new Promise((r) => c.toBlob((b) => r(b || file), "image/png"));
+  } catch (e) { return file; }
+}
 let tessP = null;
 function loadTess() {
   if (window.Tesseract) return Promise.resolve(window.Tesseract);
@@ -2495,16 +2518,25 @@ async function recognize(file, status) {
   const prepped = await prepForOcr(file);
   const T = await loadTess();
   const worker = await T.createWorker(["chi_sim", "eng"], 1, { logger: (m) => { if (m.status === "recognizing text") status(L("正在识别文字… ", "Reading text… ") + Math.round(m.progress * 100) + "%"); } });
-  try {
-    let { data } = await worker.recognize(prepped); let raw = data.text || ""; let r = C.parseReceipt(raw, S.meta, today());
-    if (!r.amount) { // 处理过的图没找到金额，就用原图再试一次
-      status(L("再试一次…", "Trying again…"));
-      ({ data } = await worker.recognize(img)); const raw2 = data.text || ""; const r2 = C.parseReceipt(raw2, S.meta, today());
-      if (r2.amount) { raw = raw2; r = r2; } else raw = raw + "\n----\n" + raw2;
-    }
-    return { via: "ocr", raw, ...r };
-  }
+  let raw = "", r;
+  try { const { data } = await worker.recognize(prepped); raw = data.text || ""; r = C.parseReceipt(raw, S.meta, today()); }
   finally { try { await worker.terminate(); } catch (e) {} }
+  if (!r.amount) {
+    // 大号粗体的金额常被漏读：把图缩小，用「稀疏文本 + 只认数字」再找一次
+    status(L("正在单独识别金额…", "Looking for the amount…"));
+    const w2 = await T.createWorker("eng", 1);
+    try {
+      await w2.setParameters({ tessedit_pageseg_mode: "11", tessedit_char_whitelist: "0123456789.,-+¥" });
+      for (const k of [0.5, 0.33]) {
+        const small = await scaledGray(file, k);
+        const { data } = await w2.recognize(small);
+        raw += "\n---- " + L("只认数字", "digits only") + " " + k + " ----\n" + (data.text || "");
+        const d = C.amountFromDigits(data.text);
+        if (d) { r.amount = d.amount; if (d.income) r.type = "inc"; break; }
+      }
+    } finally { try { await w2.terminate(); } catch (e) {} }
+  }
+  return { via: "ocr", raw, ...r };
 }
 async function onPhoto(e) {
   const file = e.target.files && e.target.files[0]; if (!file || !F) return;
