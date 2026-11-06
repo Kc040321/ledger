@@ -247,7 +247,7 @@ input,select,textarea,.inp{font-size:max(16px,1rem)!important}
 <nav id="tabs" class="tabs" aria-label="主导航"></nav>
 <input type="file" id="fileIn" hidden>
 <input type="file" id="photoIn" accept="image/*" hidden>
-<script>window.LEDGER_PWA=true;window.LEDGER_VERSION="2026.11.06-1306";</script>
+<script>window.LEDGER_PWA=true;window.LEDGER_VERSION="2026.11.06-1313";</script>
 <script>
 const I18N_EN = {
 "存储空间已满，请先删除一些旧记录": "Storage is full — delete some old records first",
@@ -1141,7 +1141,7 @@ const Core = (() => {
   /* ---------- 一句话记账（结果只用于预填，需用户确认） ---------- */
   const INCOME_WORDS = /(工资|收入|收到|进账|生活费|奖学金|兼职|红包|报酬|稿费)/;
   const CAT_WORDS = {
-    c_food: /(饭|餐|早餐|午饭|午餐|晚饭|晚餐|外卖|奶茶|咖啡|零食|水果|食堂|夜宵|饮料|美团|饿了么|肯德基|麦当劳|瑞幸|星巴克|喜茶|蜜雪|面包)/,
+    c_food: /(饭|餐|早餐|午饭|午餐|晚饭|晚餐|外卖|奶茶|咖啡|零食|水果|食堂|夜宵|饮料|美团|饿了么|肯德基|麦当劳|瑞幸|星巴克|喜茶|蜜雪|面包|碗|粉|面馆|拉面|麻辣烫|火锅|烧烤|餐厅|饭店|食府|小吃|汉堡|披萨|炸鸡|轻食|沙拉|便当|快餐|茶饮|甜品|烘焙|库迪|霸王茶姬|茶百道|古茗|沪上阿姨|华莱士|塔斯汀|必胜客|海底捞)/,
     c_traffic: /(地铁|公交|打车|滴滴|高铁|火车|机票|车费|单车|加油|停车|12306|哈啰|高德)/,
     c_shop: /(淘宝|京东|衣服|鞋|买了|网购|拼多多)/, c_daily: /(日用|纸巾|洗发|超市|洗衣)/,
     c_fun: /(电影|游戏|KTV|演出|门票|旅游)/i, c_study: /(书|课|打印|文具|考试|报名)/,
@@ -1197,23 +1197,34 @@ const Core = (() => {
     }
     if (!out.amount) { const m = text.match(/¥\s*-?\s*(\d{1,6})(?![\d.])/); if (m) out.amount = parseYuan(m[1]); }   // ¥20 这种整数
     if (!out.amount) { const all = [...text.matchAll(new RegExp(MONEY.source, "g"))].map((m) => num(m)).filter((v) => v > 0); if (all.length) out.amount = Math.max(...all); }
-    const NOISE = /(支付成功|付款成功|交易成功|当前状态|完成|返回|账单详情|全部账单|微信支付|支付宝|中国移动|中国联通|中国电信|\d{1,2}：\d{2}|^[\d\s%]+$|5G|4G|LTE|订单号|单号|时间)/;
+    const NOISE = /(支付成功|付款成功|交易成功|当前状态|完成|返回|账单详情|全部账单|微信支付|支付宝|中国移动|中国联通|中国电信|\d{1,2}：\d{2}|^[\d\s%]+$|5G|4G|LTE|订单号|单号|时间|积分|贴纸|领取|更多)/;
+    // 截图里左边一列的标签，识别时常被单独读成一段，不能当成商户
+    const LABEL = /^(支付时间|付款时间|创建时间|付款方式|支付方式|商品说明|商品|支付奖励|收款方全称|收款方|商户全称|商户名称|商户单号|交易单号|订单号|账单管理|账单分类|计入收支|计入收文|标签|备注|更多|当前状态|支付优惠|转账说明|对方账户)[：]?$/;
+    const okName = (v) => v && v.length >= 2 && v.length <= 30 && !NOISE.test(v) && !LABEL.test(v) && !MONEY.test(v) && /[㐀-鿿A-Za-z]{2}/.test(v);
     // 1) 金额正上方的一行通常就是商户名（微信、支付宝的成功页和账单详情都是这样）
-    if (amtLine > 0) for (let i = amtLine - 1; i >= Math.max(0, amtLine - 3); i--) { const v = lines[i].replace(/^[<‹]\s*/, ""); if (v.length >= 2 && v.length <= 30 && !NOISE.test(v) && !MONEY.test(v) && /[㐀-鿿A-Za-z]/.test(v)) { out.merchant = v; break; } }
-    // 2) 关键字行
+    if (amtLine > 0) for (let i = amtLine - 1; i >= Math.max(0, amtLine - 3); i--) { const v = lines[i].replace(/^[<‹\[\]|]+\s*/, "").trim(); if (okName(v)) { out.merchant = v; break; } }
+    // 2) 平台订单的商品说明：「店名-美团App-订单号」→ 取店名
+    if (!out.merchant || /^(美团|饿了么|淘宝|天猫|京东|拼多多)$/.test(out.merchant)) {
+      const joined = lines.join("\n");
+      const m = joined.match(/([^\n]{2,40}?)[-–—]\s*\n?\s*(美团App|美团|饿了么|淘宝|天猫|京东|拼多多|大众点评)[^\n]*\d{6,}/);
+      if (m) { const shop = m[1].replace(/^(商品说明|商品)[：]?/, "").trim(); if (okName(shop) || shop.length > 30) out.merchant = shop.slice(0, 30); }
+    }
+    // 3) 关键字行：值在同一行；或下一行（下一行不能是另一个标签）
     const KEYS = [/^(收款方全称|收款方|商户全称|商户名称|商家|交易对方|对方账户|收款人|付款给)[：]?(.*)$/, /^(商品说明|商品)[：]?(.*)$/];
     for (const K of KEYS) for (let i = 0; i < lines.length && !out.merchant; i++) {
       const m = lines[i].match(K);
-      if (m) { const v = (m[2] || "").trim() || (lines[i + 1] || ""); if (v && !MONEY.test(v)) out.merchant = v; }
+      if (m) { const v = (m[2] || "").trim() || (lines[i + 1] || ""); if (okName(v)) out.merchant = v; }
     }
-    // 3) 小票：第一行一般是店名
-    if (!out.merchant && lines[0] && lines[0].length <= 20 && !NOISE.test(lines[0]) && !MONEY.test(lines[0])) out.merchant = lines[0];
+    // 4) 小票：第一行一般是店名
+    if (!out.merchant && lines[0] && lines[0].length <= 20 && okName(lines[0])) out.merchant = lines[0];
     out.merchant = out.merchant.replace(/[>›»]+$/, "").trim().slice(0, 30);
-    const pm = text.match(/(?:支付方式|付款方式)[：]?\s*([^\n]{1,20})/) || text.match(/(零钱通|零钱|花呗|余额宝|账户余额|信用卡|储蓄卡)/);
+    const pm = text.match(/(?:支付方式|付款方式)[：]?[ \t]*([^\n]{2,20})/) || text.match(/(零钱通|零钱|花呗|余额宝|账户余额|信用卡|储蓄卡|借记卡)/);
     if (pm) out.pay = pm[1].trim();
     const dm = text.match(/(20\d{2})[-/.年](\d{1,2})[-/.月](\d{1,2})/);
     if (dm) { const d = dm[1] + "-" + pad(+dm[2]) + "-" + pad(+dm[3]); if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today) out.date = d; }
     if (/(收款成功|已收款|已存入|收到转账|转入成功|退款成功)/.test(text) && !/付款成功|支付成功/.test(text)) out.type = "inc";
+    const plat = text.match(/(美团|饿了么|大众点评|滴滴|高德打车|12306|淘宝|天猫|京东|拼多多|抖音)/);
+    out.hint = plat ? plat[1] : "";
     if (out.pay && /零钱/.test(out.pay)) out.pay = "微信 " + out.pay;
     if (out.pay && /(花呗|余额宝|账户余额)/.test(out.pay)) out.pay = "支付宝 " + out.pay;
     return out;
@@ -2484,7 +2495,15 @@ async function recognize(file, status) {
   const prepped = await prepForOcr(file);
   const T = await loadTess();
   const worker = await T.createWorker(["chi_sim", "eng"], 1, { logger: (m) => { if (m.status === "recognizing text") status(L("正在识别文字… ", "Reading text… ") + Math.round(m.progress * 100) + "%"); } });
-  try { const { data } = await worker.recognize(prepped); const raw = data.text || ""; const r = C.parseReceipt(raw, S.meta, today()); return { via: "ocr", raw, ...r }; }
+  try {
+    let { data } = await worker.recognize(prepped); let raw = data.text || ""; let r = C.parseReceipt(raw, S.meta, today());
+    if (!r.amount) { // 处理过的图没找到金额，就用原图再试一次
+      status(L("再试一次…", "Trying again…"));
+      ({ data } = await worker.recognize(img)); const raw2 = data.text || ""; const r2 = C.parseReceipt(raw2, S.meta, today());
+      if (r2.amount) { raw = raw2; r = r2; } else raw = raw + "\n----\n" + raw2;
+    }
+    return { via: "ocr", raw, ...r };
+  }
   finally { try { await worker.terminate(); } catch (e) {} }
 }
 async function onPhoto(e) {
@@ -2495,7 +2514,7 @@ async function onPhoto(e) {
     const r = await recognize(file, hint);
     F.ocrRaw = r.raw || "";
     if (!r.amount) { F.info = L("没认出金额，请手动输入。可以换一张更清晰的截图再试。", "Couldn't find an amount — please enter it, or try a clearer screenshot."); refreshForm(); return; }
-    const q = C.parseQuick([r.merchant, r.pay].filter(Boolean).join(" "), S.meta, today());
+    const q = C.parseQuick([r.merchant, r.pay, r.hint].filter(Boolean).join(" "), S.meta, today());
     const type = r.type === "inc" ? "inc" : "exp";
     Object.assign(F, { type, expr: centsToExpr(r.amount), note: (r.merchant || "").slice(0, 30) || F.note, date: r.date || F.date });
     const cat = r.cat && S.meta.cats[type].some((c) => c.id === r.cat && !c.archived) ? r.cat : q.type === type && q.cat ? q.cat : null;
