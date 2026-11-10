@@ -335,7 +335,7 @@ body{letter-spacing:.005em}
 <nav id="tabs" class="tabs" aria-label="主导航"></nav>
 <input type="file" id="fileIn" hidden>
 <input type="file" id="photoIn" accept="image/*" hidden>
-<script>window.LEDGER_PWA=true;window.LEDGER_VERSION="2026.11.10-1138";</script>
+<script>window.LEDGER_PWA=true;window.LEDGER_ANDROID=false;window.LEDGER_VERSION="2026.11.10-1934";</script>
 <script>
 const I18N_EN = {
 "存储空间已满，请先删除一些旧记录": "Storage is full — delete some old records first",
@@ -444,7 +444,7 @@ const I18N_EN = {
 "日期": "Date",
 "备注": "Note",
 "标签": "Tags",
-"周期账单": "Recurring bills",
+"周期账单": "Recurring",
 "已删除的规则": "Deleted rule",
 "报销垫付：不计入你的支出，收到报销后冲回。": "Reimbursable advance: not your spending; offset when reimbursed.",
 "计入收入。": "Counts as income.",
@@ -560,7 +560,7 @@ const I18N_EN = {
 "每周": "Weekly",
 "每天": "Daily",
 "日（没有这天的月份按月底）": "(last day if the month is shorter)",
-"自动记入": "Record automatically",
+"自动记入": "Auto-record",
 "银行会自动执行的转账（比如每天自动存钱），到日子自动算进两个账户的余额，不用每次确认": "For transfers your bank makes on its own (like daily auto-saving): added to both balances on schedule, no confirmation needed",
 "自动转账不会出现在账单列表里（每天一笔太多），在两个账户的详情里能看到累计次数和金额。修改金额会从今天起生效，之前的记录保持不变。": "Automatic transfers aren't listed in Bills (too many); both accounts' details show the count and total. Amount changes apply from today; past runs stay as they were.",
 "到期后首页会出现「待确认」，你点「记入」才会生成账单。": "When due, it appears on Home to confirm; tap Record to create the bill.",
@@ -647,7 +647,7 @@ const I18N_EN = {
 "新增分类": "New category",
 "固定 / 低频大额": "Fixed / infrequent large",
 "如房租、保险、学费。单独展示，默认不占日常预算": "Like rent, insurance, tuition. Shown separately and kept out of the daily budget by default",
-"固定支出": "Fixed spending",
+"固定支出": "Fixed",
 "图标": "Icon",
 "分类名称": "Category name",
 "删除模板": "Delete template",
@@ -767,7 +767,7 @@ const I18N_EN = {
 "剪贴板是空的": "Clipboard is empty",
 "读不到剪贴板，请长按输入框选择「粘贴」": "Can't read the clipboard — long-press the field and choose Paste",
 "已跳过": "Skipped",
-"停止自动转账": "Stop automatic transfer",
+"停止自动转账": "Stop auto transfer",
 "从今天起不再计入。之前已经自动计入的转账会保留在余额里。": "It stops from today. Transfers already recorded stay in your balances.",
 "请填写名称": "Enter a name",
 "请填写金额": "Enter an amount",
@@ -775,7 +775,7 @@ const I18N_EN = {
 "请选择开始日期": "Choose a start date",
 "已保存，从今天起按新设置计入": "Saved; new settings apply from today",
 "已保存": "Saved",
-"删除自动转账": "Delete automatic transfer",
+"删除自动转账": "Delete auto transfer",
 "删除周期账单": "Delete recurring bill",
 "删除后，它之前自动计入的转账也会一起从余额里去掉。如果只是以后不再转，请用「从今天起停止」。": "Deleting also removes the transfers it already recorded from your balances. To just stop future transfers, use Stop.",
 "已经记入的账单会保留。": "Bills already recorded are kept.",
@@ -870,7 +870,29 @@ const I18N_EN = {
 "简体中文": "简体中文",
 "微信": "WeChat",
 "主导航": "Main navigation",
-"查看识别出的文字": "Show recognized text"
+"查看识别出的文字": "Show recognized text",
+"演示数据": "Demo data",
+"备份": "Backup",
+"备份 ›": "Back up ›",
+"实际": "Actual",
+"分摊": "Spread",
+"预算含固定支出": "Include fixed in budget",
+"按月分摊": "Spread monthly",
+"一句话记账": "Quick entry",
+"无结果": "No results",
+"设置 ›": "Set ›",
+"人数": "People",
+"和谁": "With",
+"我的份额": "My share",
+"更多": "More",
+"名称": "Name",
+"账户名称": "Account name",
+"已结清": "Settled",
+"已存为模板": "Saved as template",
+"已结清 ": "Settled",
+"无法恢复": "This can't be undone",
+"已计入的转账会一并移除": "Recorded transfers will also be removed",
+"输入「清空」确认": "Type DELETE to confirm"
 };
 
 /* 线条图标：24×24，描边 1.7，圆角端点，颜色跟随文字（currentColor） */
@@ -1615,6 +1637,7 @@ function txIco(t, cls = "") {
 const ERRMSG = (e) => (e && e.code === "quota_exceeded" ? "存储空间已满，请先删除一些旧记录" : e && e.code === "invalid_argument" ? "没有写入权限" : "保存失败，请检查网络后重试");
 
 const PWA = !!window.LEDGER_PWA;
+const ANDROID = !!window.AndroidBridge;
 /* 离线版：IndexedDB，一份文档一条记录；meta 存为 {id:"meta", data} */
 const IDB = {
   db: null,
@@ -1799,7 +1822,7 @@ function toast(msg, opt = {}) {
   toastT = setTimeout(() => el.remove(), opt.ms || (opt.undo ? 6000 : 2200));
 }
 function confirmSheet(title, body, okText, onOk, danger = true) {
-  openSheet({ render: () => shHead(title) + `<div class="prose"><p>${body}</p></div><div class="btns" style="margin-top:14px"><button class="btn" data-a="close">取消</button><button class="btn ${danger ? "d" : "p"}" data-a="cOk">${okText}</button></div>`, onOk });
+  openSheet({ render: () => shHead(title) + `${body ? `<div class="prose"><p>${body}</p></div>` : ""}<div class="btns" style="margin-top:14px"><button class="btn" data-a="close">取消</button><button class="btn ${danger ? "d" : "p"}" data-a="cOk">${okText}</button></div>`, onOk });
 }
 
 
@@ -1859,7 +1882,7 @@ function dayTot(list) {
 }
 const sortTx = (a, b) => b.date.localeCompare(a.date) || (b.ts || 0) - (a.ts || 0);
 const mswitch = (ym, act = "ym") => `<div class="mswitch"><button data-a="${act}" data-d="-1" aria-label="上个月">‹</button><span>${ymLabel(ym)}</span><button data-a="${act}" data-d="1" aria-label="下个月">›</button></div>`;
-const amortSeg = () => `<div class="seg" role="tablist" aria-label="统计口径"><button class="${S.meta.settings.amortView ? "" : "on"}" data-a="amort" data-v="0">实际发生</button><button class="${S.meta.settings.amortView ? "on" : ""}" data-a="amort" data-v="1">大额按月分摊</button></div>`;
+const amortSeg = () => `<div class="seg" role="tablist" aria-label="统计口径"><button class="${S.meta.settings.amortView ? "" : "on"}" data-a="amort" data-v="0">实际</button><button class="${S.meta.settings.amortView ? "on" : ""}" data-a="amort" data-v="1">分摊</button></div>`;
 const pct = (a, b) => (b > 0 ? Math.max(0, Math.min(100, (a / b) * 100)) : 0);
 
 /* =================== 页面：首页 =================== */
@@ -1868,10 +1891,8 @@ function pageHome() {
   const empty = d.live.length === 0;
   const head = `<div class="top">${mswitch(ym)}<div class="r"><button class="ibtn" data-a="go" data-p="budget" aria-label="预算">${svg("target")}</button><button class="ibtn" data-a="go" data-p="settings" aria-label="设置">${svg("gear")}</button></div></div>`;
   if (empty) {
-    return head + `<div class="card empty"><div class="e1">${icoHtml("book", 160, 1, "xl")}</div><h3>记下第一笔吧</h3>
-      <p>常用的账户和分类已经准备好了，不用先设置。<br>点「记一笔」，输入金额，点「完成」。</p>
-      <div style="display:grid;gap:8px"><button class="btn p block" data-a="add">记一笔</button><button class="btn block" data-a="demo">先看看演示数据</button></div>
-      <p class="tiny" style="margin:14px 0 0">演示数据可在「设置」里一键清除，不会和你自己的账混在一起。</p></div>` + statusNote();
+    return head + autoCard() + `<div class="card empty"><div class="e1">${icoHtml("book", 160, 1, "xl")}</div><h3>还没有账单</h3>
+      <div style="display:grid;gap:8px;margin-top:14px"><button class="btn p block" data-a="add">记一笔</button><button class="btn block" data-a="demo">演示数据</button></div></div>` + statusNote();
   }
   const passed = ym === C.ymOf(today()) ? Number(today().slice(8)) : C.daysInMonth(ym);
   const bal = sm.income - sm.spend;
@@ -1884,6 +1905,7 @@ function pageHome() {
     <div class="tap" data-a="drill" data-q="k=spend&ym=${ym}&fixed=0"><div class="lab">日常日均</div><div class="v">${Y(passed > 0 ? Math.round(sm.daily / passed) : 0)}</div></div></div></div>`;
   html += budgetCard(ym, true);
   html += dueCard();
+  html += autoCard();
   html += backupCard();
   html += aaCard();
   html += reimbCard();
@@ -1903,16 +1925,16 @@ function catRow(g, max, total, ym, extraQ = "") {
     <div class="bar tint" style="${catHueStyle(g.key)}"><i style="width:${pct(g.amt, max)}%"></i></div></div><span class="v num">${F$(g.amt)}</span></div>`;
 }
 function statusNote() {
-  if (S.sync === "stale") return `<div class="note-box">暂时连不上，显示的可能不是最新数据。新记的账会在连上后保存。</div>`;
-  if (S.sync === "error" || S.sync === "revoked") return `<div class="note-box">同步出错，请刷新页面。在此之前请不要清空或恢复数据。</div>`;
+  if (S.sync === "stale") return `<div class="note-box">${L("网络未连接", "Offline")}</div>`;
+  if (S.sync === "error" || S.sync === "revoked") return `<div class="note-box">${L("同步出错，请刷新", "Sync error, please refresh")}</div>`;
   return "";
 }
 function budgetCard(ym, compact) {
   const b = C.budgetStatus(S.meta, D().lines, ym, today());
-  if (!b.total) return compact ? `<div class="card tap" data-a="go" data-p="budget" role="button"><div class="card-h" style="margin:0"><h2>月度预算</h2><span class="link">设置预算 ›</span></div><div class="small muted">设一个日常开销上限，首页会显示还剩多少、每天能花多少。</div></div>` : "";
+  if (!b.total) return compact ? `<div class="card tap" data-a="go" data-p="budget" role="button"><div class="card-h" style="margin:0"><h2>月度预算</h2><span class="link">设置 ›</span></div></div>` : "";
   const over = b.remaining < 0;
   return `<div class="card ${compact ? "tap" : ""}" ${compact ? 'data-a="go" data-p="budget" role="button"' : ""}>
-    <div class="card-h"><h2>${compact ? "预算" : "月度总预算"}</h2><span class="small muted">${S.meta.budgets.includeFixed ? "含固定大额" : "仅日常支出"}</span></div>
+    <div class="card-h"><h2>${compact ? "预算" : "月度总预算"}</h2></div>
     <div class="brow"><span class="${over ? "warn" : ""}" style="font-size:1.25rem;font-weight:650">${over ? "已超出 " + Y(-b.remaining) : "剩余 " + Y(b.remaining)}</span><span class="small muted num">${F$(b.used)} / ${F$(b.total)}</span></div>
     <div class="bar ${over ? "over" : ""}"><i style="width:${pct(b.used, b.total)}%"></i></div>
     ${b.daysLeft > 0 && !over ? `<div class="small ink2" style="margin-top:8px">${L(`还剩 ${b.daysLeft} 天，每天可用约 `, `${b.daysLeft} days left · about `)}${Y(b.perDay)}${L("", " a day")}</div>` : ""}</div>`;
@@ -1920,17 +1942,47 @@ function budgetCard(ym, compact) {
 function dueCard() {
   const due = C.dueRecurring(S.meta, D().txs, today());
   if (!due.length) return "";
-  return `<div class="card"><div class="card-h"><h2>待确认的周期账单</h2><span class="tiny muted">确认后才会记入</span></div>${due.map((x) => {
+  return `<div class="card"><div class="card-h"><h2>周期账单</h2></div>${due.map((x) => {
     const r = x.rule, c = cat(r.cat);
     return `<div class="due">${r.type === "tr" ? txIco({ type: "tr" }) : catIco(c)}<div class="mid tap" data-a="dueEdit" data-r="${esc(r.id)}" data-ym="${x.ym}" data-date="${x.date}"><div>${esc(r.name)}</div><div class="tiny muted">${short(x.date)} · ${esc(aName(r.acct))}${r.type === "tr" ? " → " + esc(aName(r.to)) : ""}</div></div>
       <span class="num" style="font-weight:600">${F$(r.amount)}</span><button style="background:var(--chip)" data-a="dueSkip" data-r="${esc(r.id)}" data-ym="${x.ym}">跳过</button><button style="background:var(--accent);color:var(--accent-ink)" data-a="dueOk" data-r="${esc(r.id)}" data-ym="${x.ym}" data-date="${x.date}">记入</button></div>`;
   }).join("")}</div>`;
 }
+/* ---------- 安卓：通知识别到的交易，等用户确认 ---------- */
+S.pending = [];
+function autoCard() {
+  if (!ANDROID || !S.pending.length) return "";
+  const rows = S.pending.slice(0, 8).map((p) => {
+    const ty = p.type === "inc" ? "inc" : p.type === "refund" ? "refund" : "exp";
+    const ic = /微信/.test(p.source) ? icoHtml("wallet", 145) : /支付宝/.test(p.source) ? icoHtml("wallet", 205) : icoHtml("bank", 210);
+    const w = new Date(p.time), when = short(C.ymd(w)) + " " + C.pad(w.getHours()) + ":" + C.pad(w.getMinutes());
+    return `<div class="due">${ic}<div class="mid tap" data-a="autoOk" data-id="${esc(p.id)}"><div>${esc(p.merchant || p.source)}${ty === "refund" ? ` <span class="tag a">${L("可能是退款", "maybe a refund")}</span>` : ""}</div><div class="tiny muted">${esc(when)} · ${esc(p.source)}</div></div>
+      <span class="num ${ty === "exp" ? "" : "inc"}" style="font-weight:600">${ty === "exp" ? "−" : "+"}${F$(p.amount)}</span><button style="background:var(--chip)" data-a="autoIgnore" data-id="${esc(p.id)}">${L("忽略", "Ignore")}</button><button style="background:var(--accent);color:var(--accent-ink)" data-a="autoOk" data-id="${esc(p.id)}">${L("记入", "Record")}</button></div>`;
+  }).join("");
+  return `<div class="card"><div class="card-h"><h2>${L("自动识别的交易", "Detected transactions")}</h2>${S.pending.length > 1 ? `<button class="link" data-a="autoIgnoreAll">${L("全部忽略", "Ignore all")}</button>` : ""}</div>${rows}
+    ${S.pending.length > 8 ? `<p class="tiny muted" style="margin:6px 0 0">${L(`还有 ${S.pending.length - 8} 笔`, `${S.pending.length - 8} more`)}</p>` : ""}</div>`;
+}
+function refreshPending(focus) {
+  if (!ANDROID) return;
+  try { S.pending = JSON.parse(window.AndroidBridge.getPending()) || []; } catch (e) { S.pending = []; }
+  S._keepScroll = true;
+  if (focus && S.pending.length && S.page !== "home") { closeAll(); go("home"); } else render();
+}
+window.__ledgerPending = refreshPending;
+window.__ledgerBack = () => { if (sheets.length) { closeSheet(); return true; } if (S.page !== "home") { go("home"); return true; } return false; };
+window.__ledgerSaved = (name) => markSaved(name);
+function openAutoLog() {
+  let log = []; try { log = JSON.parse(window.AndroidBridge.getLog()) || []; } catch (e) {}
+  const text = log.map((x) => { const d = new Date(x.time); return `[${C.ymd(d)} ${C.pad(d.getHours())}:${C.pad(d.getMinutes())}] ${x.pkg}\n${x.title}\n${x.text}\n→ ${x.result || L("未识别", "not recognized")}`; }).join("\n\n");
+  openSheet({ text, render: () => shHead(L("最近识别到的通知", "Recently captured notifications")) +
+    ``+
+    (log.length ? `<textarea class="inp" style="width:100%;min-height:260px" readonly>${esc(text)}</textarea><div class="btns" style="margin-top:8px"><button class="btn" data-a="autoLogClear">${L("清空", "Clear")}</button><button class="btn p" data-a="copyTa">${L("复制全部", "Copy all")}</button></div>` : `<div class="empty"><p>${L("还没有捕获到和交易有关的通知。开启通知识别后，付一笔款试试。", "Nothing captured yet. Turn on notification access, then make a payment to try it.")}</p></div>`) });
+}
 function backupCard() {
   if (S.mode !== "idb" || D().live.length < 20) return "";
   const lb = S.meta.settings.lastBackup, days = lb ? Math.floor((new Date(today()) - new Date(lb)) / 864e5) : null;
   if (days != null && days < 30) return "";
-  return `<div class="card"><div class="card-h" style="margin:0"><h2>备份一下</h2><button class="link" data-a="backup">立即备份 ›</button></div><div class="small muted">${days == null ? L("账单只存在这台手机上。还没有备份过，导出一份存到「文件」更放心。", "Your records live only on this phone and have never been backed up. Export a copy to Files to be safe.") : L(`账单只存在这台手机上。上次备份是 ${days} 天前，导出一份存到「文件」更放心。`, `Your records live only on this phone. Last backup: ${days} days ago — export a fresh copy to Files.`)}</div></div>`;
+  return `<div class="card"><div class="card-h" style="margin:0"><h2>备份</h2><button class="link" data-a="backup">备份 ›</button></div><div class="small muted">${days == null ? L("还没有备份", "Never backed up") : L(`上次备份 ${days} 天前`, `Last backup ${days} days ago`)}</div></div>`;
 }
 function aaCard() {
   const open = aaAll().filter((x) => x.left > 0);
@@ -1941,7 +1993,7 @@ function aaCard() {
     const who = G.unpaid.length ? L("还差 ", "Waiting on ") + G.unpaid.slice(0, 3).map((x) => esc(N(x))).join(L("、", ", ")) + (G.unpaid.length > 3 ? L(" 等", " and others") : "") : G.people ? L(`已收 ${Math.min(G.paidCount, G.people)}/${G.people} 人`, `${Math.min(G.paidCount, G.people)}/${G.people} paid`) : L("已收 ", "Received ") + F$(G.collected);
     return `<div class="due">${catIco(c)}<div class="mid tap" data-a="aaOpen" data-g="${esc(G.g)}"><div>${esc(G.title)}</div><div class="tiny muted">${short(G.date)} · ${who}</div></div>
       <span class="num" style="font-weight:600">${F$(G.left)}</span><button style="background:var(--accent);color:var(--accent-ink)" data-a="aaOpen" data-g="${esc(G.g)}">收款</button></div>`;
-  }).join("")}${open.length > 5 ? `<p class="tiny muted" style="margin:6px 0 0">${L(`还有 ${open.length - 5} 笔，在资产页「AA 待收」账户里可以看到全部`, `${open.length - 5} more — see the “AA owed” account on the Assets page`)}</p>` : ""}</div>`;
+  }).join("")}${open.length > 5 ? `<p class="tiny muted" style="margin:6px 0 0">${L(`还有 ${open.length - 5} 笔`, `${open.length - 5} more`)}</p>` : ""}</div>`;
 }
 function openAA(g) {
   openSheet({ live: true, g, st: { amt: null, who: null, acct: null, date: today() }, render: (sh) => {
@@ -1962,10 +2014,9 @@ function openAA(g) {
         <div class="lbl">收到哪个账户</div>${acctChips(st.acct, "aaAcct", (a) => !C.isLiab(a) && a.type !== "receivable")}
         <div class="field"><input class="inp" type="date" id="aaDate" value="${st.date}" aria-label="收款日期"></div><div class="err" id="aaErr"></div>
         <button class="btn p block" data-a="aaGet">收到了</button><button class="link" data-a="aaWaive" style="display:block;margin:6px auto 0">${L(`剩下 ¥${F$(G.left)} 不收了`, `Write off the remaining ¥${F$(G.left)}`)}</button>`;
-    } else h += `<div class="note-box" style="margin-top:12px">这次 AA 已经结清 ✓</div>`;
+    } else h += `<div class="note-box" style="margin-top:12px">${L("已结清", "Settled")}</div>`;
     const hist = [...G.pays, ...G.waive].sort(sortTx);
     if (hist.length) h += `<div class="group-t">收款记录</div><div class="card day">${hist.map((x) => itemRow(x)).join("")}</div>`;
-    h += `<p class="tiny muted">收到的钱只是把垫付的钱拿回来，不算收入；没收回而选择「不收了」的部分，才计入你自己的支出。</p>`;
     return h;
   }, mount: (b, sh) => {
     const a = $("#aaAmt", b); if (a) a.oninput = (e) => (sh.st.amt = e.target.value);
@@ -1975,14 +2026,14 @@ function openAA(g) {
 function openAAConvert(id) {
   const t = S.txs.get(id);
   openSheet({ id, st: { aaN: 0, share: "", names: "", recv: defRecv() }, render: (sh) => shHead("改成 AA") +
-    `<div class="note-box">${esc(txTitle(t))} ${Y(t.amount)} · ${short(t.date)}${t.note ? " · " + esc(t.note) : ""}<br>改完后，这笔只留你的份额算支出，其余记为待收。</div>${aaFields(sh.st, "c")}<div class="err" id="cErr"></div><button class="btn p block" data-a="aaConvOk">确定</button>`,
+    `<div class="note-box">${esc(txTitle(t))} ${Y(t.amount)} · ${short(t.date)}${t.note ? " · " + esc(t.note) : ""}</div>${aaFields(sh.st, "c")}<div class="err" id="cErr"></div><button class="btn p block" data-a="aaConvOk">确定</button>`,
     mount: (b, sh) => { sh.hint = bindAA(b, sh.st, "c", () => t.amount); } });
 }
 function reimbCard() {
   const p = C.pendingReimb(D().txs);
   if (!p.length) return "";
   const tot = p.reduce((s, x) => s + x.left, 0);
-  return `<div class="card tap" data-a="drill" data-q="k=pending" role="button"><div class="card-h" style="margin:0"><h2>待报销</h2><span class="num" style="font-weight:600">${Y(tot)}</span></div><div class="small muted">${L(`${p.length} 笔垫付还没收到报销款。垫付不计入你的支出。`, `${p.length} advance${p.length > 1 ? "s" : ""} not yet reimbursed. Advances don't count as your spending.`)}</div></div>`;
+  return `<div class="card tap" data-a="drill" data-q="k=pending" role="button"><div class="card-h" style="margin:0"><h2>待报销</h2><span class="num" style="font-weight:600">${Y(tot)}</span></div><div class="small muted">${L(`${p.length} 笔`, `${p.length}`)}</div></div>`;
 }
 
 /* =================== 下钻明细 =================== */
@@ -2033,7 +2084,7 @@ function openDrill(q) {
     const r = drillData(sh.q);
     const body = r.rows.length ? dayGroups(r.rows.map((x) => ({ ...x, date: x.t.date })), (x) => itemRow(x.t, { line: x.line })) : `<div class="empty"><p>没有账单</p></div>`;
     return shHead(esc(r.title)) + `<div class="eq"><div class="brow" style="margin:0"><span class="ink2">${r.totalLabel === "变化" ? L("变化", "Change") : L("合计", "Total")} · ${L(r.rows.length + " 笔", r.rows.length + " bills")}</span><span class="num" style="font-size:1.25rem;font-weight:650">${C.fmt(r.total, { sym: true, plus: r.totalLabel === "变化" })}</span></div></div>
-      <p class="tiny muted" style="margin:0 2px 10px">${r.note}</p>${body}`;
+      ${body}`;
   } });
 }
 
@@ -2079,7 +2130,7 @@ function openTx(id) {
     if (t.type === "exp" || t.type === "inc" || t.type === "tr") acts2 += `<button class="chip" data-a="txCopy" data-id="${esc(t.id)}">再记一笔</button><button class="chip" data-a="txTpl" data-id="${esc(t.id)}">存为模板</button>`;
     return shHead("账单详情") + `<div style="display:flex;align-items:center;gap:12px;margin:4px 0 10px">${txIco(t, "lg")}<div><div style="font-weight:600">${esc(txTitle(t))}</div><div class="tiny muted">${txTags(t)}</div></div>
       <div style="margin-left:auto;font-size:1.6rem;font-weight:650" class="amt">${txAmt(t).replace(/<small>.*<\/small>/, "")}</div></div>
-      <div class="note-box">${effect}</div><div style="margin:6px 0 10px">${rows}</div>${acts2 ? `<div class="chips" style="flex-wrap:wrap">${acts2}</div>` : ""}
+      <div style="margin:6px 0 10px">${rows}</div>${acts2 ? `<div class="chips" style="flex-wrap:wrap">${acts2}</div>` : ""}
       ${linkHtml}<div class="btns" style="margin-top:12px">${acts}</div>`;
   } });
 }
@@ -2120,19 +2171,18 @@ function formHtml() {
     : `<div class="seg" style="flex:1">${["exp", "inc", "tr"].map((k) => `<button class="${t === k ? "on" : ""}" data-a="fType" data-v="${k}">${TNC(k)}</button>`).join("")}</div>`;
   let h = `<div class="sh-h">${seg}<button class="ibtn" data-a="close" aria-label="关闭">${svg("x")}</button></div>`;
   if (isNew && t !== "refund" && t !== "reimb" && !F.recId) {
-    h += `<div class="quick"><input class="inp" id="fQuick" placeholder="一句话记账，如：昨天午饭 25 微信" enterkeyhint="done"><button class="btn" data-a="fPhoto" aria-label="拍照或截图识别" title="拍照或截图识别" style="padding:0 12px">${gsvg("camera")}</button>${PWA ? `<button class="btn" data-a="fPaste">粘贴</button>` : ""}<button class="btn" data-a="fQuick">识别</button></div>`;
+    h += `<div class="quick"><input class="inp" id="fQuick" placeholder="一句话记账" enterkeyhint="done"><button class="btn" data-a="fPhoto" aria-label="拍照或截图识别" title="拍照或截图识别" style="padding:0 12px">${gsvg("camera")}</button>${PWA || ANDROID ? `<button class="btn" data-a="fPaste">粘贴</button>` : ""}<button class="btn" data-a="fQuick">识别</button></div>`;
     if (F.info) h += `<div class="hint" style="color:var(--accent)">${esc(F.info)}</div>`;
     if (F.ocrRaw !== undefined) h += `<button class="link" data-a="ocrShow" style="padding:0 0 6px">查看识别出的文字</button>`;
     const tpl = S.meta.templates;
     if (tpl.length) h += `<div class="chips">${tpl.map((x) => `<button class="chip" data-a="fTpl" data-id="${esc(x.id)}">${gsvg("bolt")}${esc(N(x.name))} ${F$(x.amount)}</button>`).join("")}</div>`;
   }
-  if (F.recId) h += `<div class="note-box">${L(`周期账单「${esc((S.meta.recurring.find((r) => r.id === F.recId) || {}).name || "")}」· ${F.recMonth}，确认金额后保存。`, `Recurring “${esc((S.meta.recurring.find((r) => r.id === F.recId) || {}).name || "")}” · ${F.recMonth}. Check the amount, then save.`)}</div>`;
+  if (F.recId) h += `<div class="note-box">${esc((S.meta.recurring.find((r) => r.id === F.recId) || {}).name || "")} · ${F.recMonth}</div>`;
   if (t === "exp" || t === "inc") {
     h += `<div class="cats">${catsOf(t).map((c) => `<button class="${F.cat === c.id ? "on" : ""}" data-a="fCat" data-v="${c.id}" aria-pressed="${F.cat === c.id}">${catIco(c)}${esc(N(c.name))}</button>`).join("")}<button data-a="catMgr" data-t="${t}">${uiIco("gear")}管理</button></div>`;
     h += `<div class="lbl">${t === "exp" ? "付款账户" : "收款账户"}</div>` + acctChips(F.acct, "fAcct");
   } else if (t === "tr") {
     h += `<div class="lbl">转出账户</div>` + acctChips(F.acct, "fAcct") + `<div class="lbl">转入账户</div>` + acctChips(F.to, "fTo", (a) => a.id !== F.acct);
-    h += `<div class="hint">信用卡还款、存取现金、借出借入、收回借款都用转账。转账不计入收支，只改变账户余额。</div>`;
   } else {
     const o = S.txs.get(F.refId), r = o ? C.refundable(D().txs, o, F.id) : null;
     if (o) h += `<div class="note-box">${L("原账单：", "Original: ")}${esc(txTitle(o))} ${Y(o.amount)} · ${short(o.date)}${o.note ? " · " + esc(o.note) : ""}<br>${L("最多可" + (t === "refund" ? "退" : "报销") + " ", "Up to ")}${Y(r.maxRefund)}${L("", t === "refund" ? " can be refunded" : " can be reimbursed")}</div>`;
@@ -2142,10 +2192,10 @@ function formHtml() {
   h += `<div class="field"><input class="inp" id="fNote" placeholder="备注" maxlength="60" value="${esc(F.note)}"><input class="inp" id="fTags" placeholder="#标签" maxlength="40" value="${esc(F.tags)}" style="flex:.7"></div>`;
   if (t === "exp") {
     const hasRecv = accts((a) => a.type === "receivable").length > 0;
-    h += `<details class="more" ${F.moreOpen ? "open" : ""} id="fMore"><summary>${L("更多选项：报销垫付 · 按月分摊 · AA/代付", "More: reimbursable · spread monthly · AA")} ${F.reimbursable || F.amort > 1 || F.split ? L("（已设置）", "(set)") : "›"}</summary>
-      <div class="toggle"><div><div>报销垫付</div><div class="tiny muted">公司或学校会还的钱，不计入你的支出</div></div><button class="sw ${F.reimbursable ? "on" : ""}" data-a="fReimb" role="switch" aria-checked="${F.reimbursable}" aria-label="报销垫付"></button></div>
-      <div class="lbl">按月分摊（房租、保险、年费等）</div><div class="chips">${[1, 3, 6, 12].map((n) => `<button class="chip ${F.amort === n ? "on" : ""}" data-a="fAmort" data-v="${n}">${n === 1 ? L("不分摊", "None") : L(n + " 个月", n + " months")}</button>`).join("")}</div>
-      ${isNew ? `<div class="toggle"><div><div>AA / 我先付了</div><div class="tiny muted">只把你的份额算作支出，别人的部分记为待收</div></div><button class="sw ${F.split ? "on" : ""}" data-a="fSplit" role="switch" aria-checked="${F.split}" aria-label="AA"></button></div>
+    h += `<details class="more" ${F.moreOpen ? "open" : ""} id="fMore"><summary>${L("更多", "More")}${F.reimbursable || F.amort > 1 || F.split ? " · " + [F.reimbursable && L("报销", "Reimbursable"), F.amort > 1 && L(F.amort + " 个月", F.amort + " mo"), F.split && "AA"].filter(Boolean).join(" · ") : ""} ›</summary>
+      <div class="toggle"><div>报销垫付</div><button class="sw ${F.reimbursable ? "on" : ""}" data-a="fReimb" role="switch" aria-checked="${F.reimbursable}" aria-label="报销垫付"></button></div>
+      <div class="lbl">按月分摊</div><div class="chips">${[1, 3, 6, 12].map((n) => `<button class="chip ${F.amort === n ? "on" : ""}" data-a="fAmort" data-v="${n}">${n === 1 ? L("不分摊", "None") : L(n + " 个月", n + " months")}</button>`).join("")}</div>
+      ${isNew ? `<div class="toggle"><div>AA</div><button class="sw ${F.split ? "on" : ""}" data-a="fSplit" role="switch" aria-checked="${F.split}" aria-label="AA"></button></div>
       ${F.split ? aaFields(F, "f") : ""}` : ""}
     </details>`;
   }
@@ -2175,14 +2225,13 @@ function aaCompute(total, n, shareStr, namesStr) {
 function aaHintText(total, st) {
   const r = aaCompute(total, st.aaN, st.share, st.names);
   if (r.err) return r.err;
-  const warn = st.aaN && r.names.length && r.names.length !== st.aaN - 1 ? L(`（名字有 ${r.names.length} 个，和人数对不上，按 ${st.aaN} 人算）`, ` (${r.names.length} names entered, which doesn't match; using ${st.aaN} people)`) : "";
-  return L(`你的份额 ¥${F$(r.mine)} 计入支出；别人应付 ¥${F$(r.others)}${r.per ? `，每人 ¥${F$(r.per)}` : ""}${warn}。之后在首页「待收 AA」里点一下就能记收款。`, `Your share ¥${F$(r.mine)} counts as spending; others owe ¥${F$(r.others)}${r.per ? `, ¥${F$(r.per)} each` : ""}${warn}. Collect it later from “AA owed” on the home page.`);
+  return L(`我 ¥${F$(r.mine)} · 他人 ¥${F$(r.others)}${r.per ? `（每人 ¥${F$(r.per)}）` : ""}`, `Me ¥${F$(r.mine)} · others ¥${F$(r.others)}${r.per ? ` (¥${F$(r.per)} each)` : ""}`);
 }
 function aaFields(st, p) {
   const recvs = accts((a) => a.type === "receivable");
-  return `<div class="lbl">一共几个人（含自己）</div><div class="chips">${[2, 3, 4, 5, 6, 8].map((n) => `<button class="chip ${st.aaN === n ? "on" : ""}" data-a="${p}AaN" data-v="${n}">${L(n + " 人", n + " people")}</button>`).join("")}</div>
-    <div class="field"><input class="inp" id="${p}Names" placeholder="和谁（可选）：小王 小张" maxlength="80" value="${esc(st.names || "")}"></div>
-    <div class="field"><input class="inp" id="${p}Share" inputmode="decimal" placeholder="或者直接填我的份额（元）" value="${st.aaN ? "" : esc(st.share || "")}"></div>
+  return `<div class="lbl">人数</div><div class="chips">${[2, 3, 4, 5, 6, 8].map((n) => `<button class="chip ${st.aaN === n ? "on" : ""}" data-a="${p}AaN" data-v="${n}">${L(n + " 人", n + " people")}</button>`).join("")}</div>
+    <div class="field"><input class="inp" id="${p}Names" placeholder="和谁" maxlength="80" value="${esc(st.names || "")}"></div>
+    <div class="field"><input class="inp" id="${p}Share" inputmode="decimal" placeholder="我的份额" value="${st.aaN ? "" : esc(st.share || "")}"></div>
     <div class="hint" id="${p}AaHint" style="color:var(--accent)"></div>
     ${recvs.length > 1 ? `<div class="lbl">待收记在</div>${acctChips(st.recv, p + "Recv", (a) => a.type === "receivable")}` : ""}`;
 }
@@ -2263,6 +2312,7 @@ async function formSave(again) {
     if (st.lastCat[t] !== F.cat || st.lastAcct !== F.acct) { const m = meta2(); m.settings.lastCat[t] = F.cat; m.settings.lastAcct = F.acct; Store.putMeta(m); }
   }
   const ids = list.map((x) => x.id);
+  if (F.pendingId && ANDROID) { try { window.AndroidBridge.removePending(F.pendingId); } catch (e) {} F.pendingId = null; refreshPending(); }
   if (F.mode === "new") toast(L(`已记录 ${TN(t)} ¥${F$(amount)}`, `Saved ${TN(t)} ¥${F$(amount)}`), { undo: async () => { for (const id of ids) await Store.delTx(id); toast("已撤销"); } });
   else toast("已保存修改");
   if (again) { Object.assign(F, { expr: "", note: "", tags: "", split: false, share: "", aaN: 0, names: "", reimbursable: false, amort: 1, info: "" }); refreshForm(); }
@@ -2318,7 +2368,7 @@ function paintBillList() {
   const hasAny = D().live.length > 0;
   el.innerHTML = `<div class="small ink2" style="margin:0 4px 10px;display:flex;justify-content:space-between"><span>${L(`共 ${list.length} 笔`, `${list.length} bills`)}</span><span class="num">${L(`支出 ${F$(sp)} · 收入 ${F$(inc)}`, `Out ${F$(sp)} · In ${F$(inc)}`)}</span></div>` +
     (list.length ? dayGroups(shown, (t) => itemRow(t, { selectable: true }), dayTot) + (list.length > lim ? `<button class="btn block" data-a="billMore">${L(`再显示 ${Math.min(200, list.length - lim)} 笔（共 ${list.length} 笔）`, `Show ${Math.min(200, list.length - lim)} more (${list.length} total)`)}</button>` : "") :
-      `<div class="card empty"><div class="e1">${hasAny ? uiIco("search", "xl") : icoHtml("book", 160, 1, "xl")}</div><h3>${hasAny ? "没有符合条件的账单" : "还没有账单"}</h3><p>${hasAny ? "换个筛选条件试试" : "记下第一笔，这里会按日期整理好"}</p>${hasAny ? `<button class="btn" data-a="bfReset">清除筛选</button>` : `<button class="btn p" data-a="add">记一笔</button>`}</div>`);
+      `<div class="card empty"><div class="e1">${hasAny ? uiIco("search", "xl") : icoHtml("book", 160, 1, "xl")}</div><h3>${hasAny ? "无结果" : "还没有账单"}</h3>${hasAny ? `<button class="btn" data-a="bfReset">清除筛选</button>` : `<button class="btn p" data-a="add">记一笔</button>`}</div>`);
 }
 function paintSelbar() {
   let el = $("#selbar");
@@ -2339,14 +2389,14 @@ function pageStats() {
     <div class="grid3"><div class="tap" data-a="drill" data-q="k=income&ym=${ym}"><div class="lab">收入</div><div class="v inc">${Y(sm.income)}</div></div><div class="tap" data-a="drill" data-q="k=balance&ym=${ym}"><div class="lab">结余</div><div class="v">${Y(sm.income - sm.spend)}</div></div><div class="tap" data-a="drill" data-q="k=spend&ym=${ym}"><div class="lab">笔数</div><div class="v num">${new Set(sm.spendLines.map((l) => l.tx.id)).size}</div></div></div></div>`;
   // 构成
   const max = sm.byCat.length ? Math.max(...sm.byCat.map((g) => g.amt)) : 1;
-  h += `<div class="card"><div class="card-h"><h2>消费构成</h2><span class="tiny muted">点分类查看账单</span></div>${sm.byCat.length ? sm.byCat.map((g) => catRow(g, max, sm.spend, ym)).join("") : `<p class="small muted" style="margin:0">这个月还没有支出</p>`}</div>`;
+  h += `<div class="card"><div class="card-h"><h2>消费构成</h2></div>${sm.byCat.length ? sm.byCat.map((g) => catRow(g, max, sm.spend, ym)).join("") : `<p class="small muted" style="margin:0">这个月还没有支出</p>`}</div>`;
   // 趋势
   h += trendCard(ym);
   // 变化
   const cut = ym === C.ymOf(today()) ? Number(today().slice(8)) : 0;
   const ch = C.categoryChanges(d.lines, ym, cut).slice(0, 4);
   if (ch.length) {
-    h += `<div class="card"><div class="card-h"><h2>${cut ? "和上月同期比" : "和上月比"}</h2><span class="tiny muted">${cut ? L("两个月的 1–" + cut + " 日", "Days 1–" + cut + " of both months") : mLabel(C.addMonths(ym, -1)) + " → " + mLabel(ym)}</span></div>${ch.map((x) => {
+    h += `<div class="card"><div class="card-h"><h2>${cut ? "和上月同期比" : "和上月比"}</h2><span class="tiny muted">${cut ? L("1–" + cut + " 日", "Days 1–" + cut) : mLabel(C.addMonths(ym, -1)) + " → " + mLabel(ym)}</span></div>${ch.map((x) => {
       const c = cat(x.cat) || { name: "未分类", icon: "📦" }, up = x.diff > 0;
       const why = x.top.length ? (up ? L("主要来自：", "Mostly from: ") : L("上月有而本月少了：", "Last month had: ")) + x.top.map((l) => short(l.tx.date) + (l.tx.note ? " " + esc(N(l.tx.note).slice(0, 12)) : "") + " " + F$(l.amt)).join("、") : "";
       return `<div class="crow tap" data-a="drill" data-q="k=cmp&ym=${ym}&cat=${esc(x.cat)}&cut=${cut}" role="button">${catIco(c)}<div class="mid"><div>${esc(N(c.name))} <span class="${up ? "warn" : "inc"} num">${up ? "↑" : "↓"} ${F$(Math.abs(x.diff))}</span></div>
@@ -2362,9 +2412,8 @@ function pageStats() {
   const adv = d.lines.filter((l) => l.kind === "adv" && l.ym === ym);
   if (adv.length) {
     const paid = C.sum(adv.filter((l) => l.amt > 0)), back = -C.sum(adv.filter((l) => l.amt < 0));
-    h += `<div class="card tap" data-a="drill" data-q="k=pending" role="button"><div class="card-h"><h2>报销垫付（不计入支出）</h2><span class="muted">›</span></div><div class="small ink2">${L("本月垫付 ", "Advanced this month ")}${Y(paid)}${L(" · 收到报销 ", " · reimbursed ")}${Y(back)}</div></div>`;
+    h += `<div class="card tap" data-a="drill" data-q="k=pending" role="button"><div class="card-h"><h2>报销垫付</h2><span class="muted">›</span></div><div class="small ink2">${L("本月垫付 ", "Advanced this month ")}${Y(paid)}${L(" · 收到报销 ", " · reimbursed ")}${Y(back)}</div></div>`;
   }
-  h += `<button class="link" data-a="rules" style="display:block;margin:4px auto 0">统计口径说明</button>`;
   return h;
 }
 function trendCard(ym) {
@@ -2384,7 +2433,7 @@ function trendCard(ym) {
   });
   s += `</svg>`;
   const cur = data[5], avg = Math.round(data.reduce((a, x) => a + x.sp, 0) / 6);
-  return `<div class="card chart"><div class="card-h"><h2>近 6 个月</h2><span class="tiny muted">点柱子切换月份</span></div>${s}
+  return `<div class="card chart"><div class="card-h"><h2>近 6 个月</h2></div>${s}
     <div class="legend"><span><i style="background:var(--accent)"></i>${L("支出 ", "Out ")}${F$(cur.sp)}</span><span><i style="background:var(--c2)"></i>${L("收入 ", "In ")}${F$(cur.inc)}</span><span style="margin-left:auto">${L("6 月平均支出 ", "6-mo avg out ")}${F$(avg)}</span></div></div>`;
 }
 
@@ -2398,28 +2447,26 @@ function pageBudget() {
       <div class="tap" data-a="drill" data-q="k=budget&ym=${ym}" role="button"><div class="brow"><span class="${over ? "warn" : ""}" style="font-size:1.5rem;font-weight:650">${over ? L("超出 ", "Over by ") + Y(-b.remaining) : L("剩余 ", "Left ") + Y(b.remaining)}</span><span class="small muted num">${L("已用 ", "Used ")}${F$(b.used)} / ${F$(b.total)}</span></div>
       <div class="bar ${over ? "over" : ""}"><i style="width:${pct(b.used, b.total)}%"></i></div></div>
       ${b.daysLeft > 0 ? `<div class="small ink2" style="margin-top:8px">${over ? L("本月还剩 " + b.daysLeft + " 天", b.daysLeft + " days left this month") : L("还剩 " + b.daysLeft + " 天，每天约 ", b.daysLeft + " days left · about ") + Y(b.perDay) + L("", " a day")}</div>` : ""}
-      <div class="toggle" style="border-top:1px solid var(--line);margin-top:10px"><div><div class="small">预算包含固定/大额支出</div><div class="tiny muted">关闭时，房租、保险等单独列出，不挤占日常预算</div></div><button class="sw ${B.includeFixed ? "on" : ""}" data-a="budFixed" role="switch" aria-checked="${!!B.includeFixed}" aria-label="预算包含固定支出"></button></div></div>`;
+      <div class="toggle" style="box-shadow:inset 0 1px 0 var(--line);margin-top:10px"><div class="small">预算含固定支出</div><button class="sw ${B.includeFixed ? "on" : ""}" data-a="budFixed" role="switch" aria-checked="${!!B.includeFixed}" aria-label="预算包含固定支出"></button></div></div>`;
   } else {
-    h += `<div class="card empty"><div class="e1">${icoHtml("target", 160, 1, "xl")}</div><h3>设一个月度预算</h3><p>默认只管日常开销，房租、保险等固定大额支出单独展示。</p><button class="btn p" data-a="budEdit">设置预算</button></div>`;
+    h += `<div class="card empty"><div class="e1">${icoHtml("target", 160, 1, "xl")}</div><h3>月度预算</h3><button class="btn p" data-a="budEdit">设置预算</button></div>`;
   }
   h += `<div class="card"><div class="card-h"><h2>分类预算</h2><button class="link" data-a="catBud">＋ 添加</button></div>${b.cats.length ? b.cats.map((x) => {
     const c = cat(x.cat) || { name: "已删除分类", icon: "📦" }, over = x.remaining < 0;
     return `<div class="crow">${catIco(c)}<div class="mid tap" data-a="drill" data-q="k=spend&ym=${ym}&cat=${esc(x.cat)}"><div class="brow" style="margin:0"><span>${esc(N(c.name))}</span><span class="tiny num ${over ? "warn" : "muted"}">${over ? L("超 ", "Over ") + F$(-x.remaining) : L("剩 ", "Left ") + F$(x.remaining)}</span></div><div class="bar ${over ? "over" : ""}"><i style="width:${pct(x.used, x.budget)}%"></i></div><div class="tiny muted num" style="margin-top:3px">${F$(x.used)} / ${F$(x.budget)}</div></div><button class="link" data-a="catBud" data-c="${esc(x.cat)}">改</button></div>`;
-  }).join("") : `<p class="small muted" style="margin:0">给最容易超支的分类单独设个上限，比如餐饮。</p>`}</div>`;
+  }).join("") : ""}</div>`;
   h += `<div class="card"><div class="card-h"><h2>周期账单</h2><button class="link" data-a="recEdit">＋ 添加</button></div>${S.meta.recurring.length ? S.meta.recurring.map((r) => {
     const c = cat(r.cat);
     return `<button class="list-row" data-a="recEdit" data-id="${esc(r.id)}">${r.type === "tr" ? txIco({ type: "tr" }) : catIco(c)}<span class="mid"><div>${esc(r.name)} ${r.auto ? '<span class="tag a">自动</span>' : ""}${r.end && r.end < today() ? '<span class="tag">已停止</span>' : r.active === false ? '<span class="tag">已暂停</span>' : ""}</div><div class="tiny muted">${freqText(r)} · ${TN(r.type)} · ${esc(aName(r.acct))}${r.type === "tr" ? " → " + esc(aName(r.to)) : ""}</div></span><span class="num">${F$(r.amount)}</span></button>`;
-  }).join("") : `<p class="small muted" style="margin:0">房租、话费、会员订阅等，到期时首页会提醒，你确认后才记入。银行每天/每月自动执行的转账，可以设成「自动记入」。</p>`}</div>`;
+  }).join("") : ""}</div>`;
   const from = C.addMonths(C.ymOf(today()), -11);
   const fx = D().live.filter((t) => t.type === "exp" && (cat(t.cat) || {}).fixed && C.ymOf(t.date) >= from).sort(sortTx);
   h += `<div class="card"><div class="card-h"><h2>固定 / 低频大额支出</h2><button class="link" data-a="drill" data-q="k=fixedYear">近 12 个月 ›</button></div>
-    <p class="tiny muted" style="margin:0 0 10px">房租、保险、学费、年费这类支出不是日常消费失控。把它们设为「按月分摊」，再切换口径，就能看到每月的真实负担。哪些分类算固定支出，可在分类管理里设置。</p>
-    ${amortSeg()}<div style="margin-top:10px">${fx.slice(0, 5).map((t) => itemRow(t)).join("") || '<p class="small muted" style="margin:0">近 12 个月没有固定/大额支出</p>'}</div></div>`;
+    ${amortSeg()}<div style="margin-top:10px">${fx.slice(0, 5).map((t) => itemRow(t)).join("") || '<p class=\"small muted\" style=\"margin:0\">无</p>'}</div></div>`;
   return h;
 }
 function openBudgetEdit() {
-  openSheet({ render: () => shHead("月度总预算") + `<div class="field"><input class="inp" id="budI" inputmode="decimal" placeholder="例如 2000，填 0 表示不设预算" value="${S.meta.budgets.total ? centsToExpr(S.meta.budgets.total) : ""}"></div>
-    <p class="tiny muted">${S.meta.budgets.includeFixed ? L("包含固定/大额支出。可在预算页切换。", "Includes fixed / large spending. Change this on the Budget page.") : L("不含固定/大额支出。可在预算页切换。", "Excludes fixed / large spending. Change this on the Budget page.")}</p><div class="err" id="budE"></div><button class="btn p block" data-a="budSave">保存</button>`,
+  openSheet({ render: () => shHead("月度总预算") + `<div class="field"><input class="inp" id="budI" inputmode="decimal" placeholder="金额" value="${S.meta.budgets.total ? centsToExpr(S.meta.budgets.total) : ""}"></div><div class="err" id="budE"></div><button class="btn p block" data-a="budSave">保存</button>`,
     mount: (b) => setTimeout(() => $("#budI", b).focus(), 60) });
 }
 function openCatBudget(catId) {
@@ -2441,17 +2488,16 @@ function openRecEdit(id, init) {
   openSheet({ R, isNew: !r0, render: (sh) => {
     const R = sh.R;
     return shHead(sh.isNew ? "添加周期账单" : "编辑周期账单") + `<div class="seg" style="margin-bottom:10px">${["exp", "inc", "tr"].map((k) => `<button class="${R.type === k ? "on" : ""}" data-a="rType" data-v="${k}">${TNC(k)}</button>`).join("")}</div>
-      <div class="field"><input class="inp" id="rName" placeholder="名称，如：房租、视频会员" value="${esc(R.name)}" maxlength="20"><input class="inp" id="rAmt" inputmode="decimal" placeholder="金额" value="${R.amount ? centsToExpr(R.amount) : ""}" style="flex:.6"></div>
+      <div class="field"><input class="inp" id="rName" placeholder="名称" value="${esc(R.name)}" maxlength="20"><input class="inp" id="rAmt" inputmode="decimal" placeholder="金额" value="${R.amount ? centsToExpr(R.amount) : ""}" style="flex:.6"></div>
       ${R.type !== "tr" ? `<div class="lbl">分类</div><div class="chips">${catsOf(R.type).map((c) => `<button class="chip ${R.cat === c.id ? "on" : ""}" data-a="rCat" data-v="${c.id}">${catIco(c, "sm")}${esc(N(c.name))}</button>`).join("")}</div>` : ""}
       <div class="lbl">${R.type === "tr" ? "转出账户" : "账户"}</div>${acctChips(R.acct, "rAcct")}
       ${R.type === "tr" ? `<div class="lbl">转入账户</div>${acctChips(R.to, "rTo", (a) => a.id !== R.acct)}` : ""}
       <div class="lbl">频率</div><div class="seg">${[["month", "每月"], ["week", "每周"], ["day", "每天"]].map(([k, v]) => `<button class="${R.freq === k ? "on" : ""}" data-a="rFreq" data-v="${k}">${v}</button>`).join("")}</div>
-      ${R.freq === "month" ? `<div class="field" style="align-items:center"><span class="small ink2">每月</span><input class="inp" id="rDay" type="number" min="1" max="31" value="${R.day || 1}" style="flex:0 0 80px"><span class="small ink2">日（没有这天的月份按月底）</span></div>` : ""}
+      ${R.freq === "month" ? `<div class="field" style="align-items:center"><span class="small ink2">每月</span><input class="inp" id="rDay" type="number" min="1" max="31" value="${R.day || 1}" style="flex:0 0 80px"><span class="small ink2">日</span></div>` : ""}
       ${R.freq === "week" ? `<div class="chips">${WD.map((w, i) => `<button class="chip ${R.wday === i ? "on" : ""}" data-a="rWday" data-v="${i}">${w}</button>`).join("")}</div>` : ""}
       <div class="field" style="align-items:center"><span class="small ink2">从</span><input class="inp" id="rStart" type="date" value="${R.startDate}"><span class="small ink2">开始</span></div>
-      ${R.type === "tr" ? `<div class="toggle"><div><div>自动记入</div><div class="tiny muted">银行会自动执行的转账（比如每天自动存钱），到日子自动算进两个账户的余额，不用每次确认</div></div><button class="sw ${R.auto ? "on" : ""}" data-a="rAuto" role="switch" aria-checked="${!!R.auto}" aria-label="自动记入"></button></div>` : ""}
-      ${R.end ? `<div class="note-box">${L(`已于 ${R.end} 停止。`, `Stopped on ${R.end}.`)}</div>` : ""}
-      <p class="tiny muted">${R.type === "tr" && R.auto ? "自动转账不会出现在账单列表里（每天一笔太多），在两个账户的详情里能看到累计次数和金额。修改金额会从今天起生效，之前的记录保持不变。" : "到期后首页会出现「待确认」，你点「记入」才会生成账单。"}</p><div class="err" id="rErr"></div>
+      ${R.type === "tr" ? `<div class="toggle"><div>自动记入</div><button class="sw ${R.auto ? "on" : ""}" data-a="rAuto" role="switch" aria-checked="${!!R.auto}" aria-label="自动记入"></button></div>` : ""}
+      ${R.end ? `<div class="note-box">${L(`已于 ${R.end} 停止。`, `Stopped on ${R.end}.`)}</div>` : ""}<div class="err" id="rErr"></div>
       <div class="btns">${sh.isNew ? "" : R.auto && !R.end ? `<button class="btn" data-a="rStop">停止</button><button class="btn d" data-a="rDel">删除</button>` : `<button class="btn d" data-a="rDel">删除</button>`}<button class="btn p" data-a="rSave">保存</button></div>`;
   }, mount: (b, sh) => {
     $("#rName", b).oninput = (e) => (sh.R.name = e.target.value);
@@ -2477,7 +2523,6 @@ function pageAssets() {
   }
   const arch = S.meta.accounts.filter((a) => a.archived);
   if (arch.length) h += `<div class="group-t">已归档</div><div class="card" style="padding:4px 16px">${arch.map((a) => acctRow(a, d.bal[a.id])).join("")}</div>`;
-  h += `<div class="note-box">信用卡还款、借出、借入、收回借款，都用「转账」记录：只改变账户余额，不计入收支，也不会重复算一次消费。</div>`;
   return h;
 }
 function balText(a, b) {
@@ -2520,10 +2565,9 @@ function openAcctEdit(id) {
   const used = a0 && D().txs.some((t) => t.acct === a0.id || t.to === a0.id);
   openSheet({ A: A0, isNew: !a0, render: (sh) => {
     const A = sh.A, liab = C.isLiab(A);
-    return shHead(sh.isNew ? "添加账户" : "编辑账户") + `<div class="field"><input class="inp" id="aName" placeholder="账户名称，如：招商银行卡" value="${esc(A.name)}" maxlength="20"></div>
+    return shHead(sh.isNew ? "添加账户" : "编辑账户") + `<div class="field"><input class="inp" id="aName" placeholder="账户名称" value="${esc(A.name)}" maxlength="20"></div>
       <div class="lbl">类型</div><div class="chips" style="flex-wrap:wrap">${Object.entries(C.ACCT_TYPES).map(([k, v]) => `<button class="chip ${A.type === k ? "on" : ""}" data-a="aType" data-v="${k}">${v.icon} ${v.name}</button>`).join("")}</div>
-      <div class="lbl">${liab ? "开始记账时的欠款（元）" : "开始记账时的余额（元）"}</div><div class="field"><input class="inp" id="aInit" inputmode="decimal" value="${A._init != null ? esc(A._init) : A.init ? centsToExpr(liab ? -A.init : A.init) : ""}" placeholder="0"></div>
-      <p class="tiny muted">${liab ? "信用卡消费计入支出并增加欠款；还款请用「转账」从储蓄账户转到这张卡。" : "期初余额不计入收入。之后的变化都由账单计算。"}</p><div class="err" id="aErr"></div>
+      <div class="lbl">${liab ? "开始记账时的欠款（元）" : "开始记账时的余额（元）"}</div><div class="field"><input class="inp" id="aInit" inputmode="decimal" value="${A._init != null ? esc(A._init) : A.init ? centsToExpr(liab ? -A.init : A.init) : ""}" placeholder="0"></div><div class="err" id="aErr"></div>
       <div class="btns">${sh.isNew ? "" : used ? `<button class="btn" data-a="aArch">${A.archived ? "取消归档" : "归档"}</button>` : `<button class="btn d" data-a="aDel">删除</button>`}<button class="btn p" data-a="aSave">保存</button></div>`;
   }, mount: (b, sh) => { $("#aName", b).oninput = (e) => (sh.A.name = e.target.value); $("#aInit", b).oninput = (e) => (sh.A._init = e.target.value); } });
 }
@@ -2535,27 +2579,28 @@ function pageSettings() {
   const LK = S.meta.settings.lock;
   const syncTxt = { ok: '<span class="status-dot"></span>已同步到你的 Claude 账号', stale: '<span class="status-dot off"></span>暂时离线，连上后自动同步', error: '<span class="status-dot off"></span>同步出错，请刷新', revoked: '<span class="status-dot off"></span>无法访问数据', local: '<span class="status-dot off"></span>仅保存在这个浏览器', idb: '<span class="status-dot"></span>' + L("保存在这台手机上，没网也能用", "Stored on this phone, works offline") + (S.persisted === false ? L("（系统可能在空间不足时清理，请定期备份）", " (the system may clear it when storage is low — back up regularly)") : ""), connecting: "连接中…" }[S.sync];
   const demo = D().txs.some((t) => t.demo);
-  return `<div class="top"><button class="back" data-a="go" data-p="home">‹ 首页</button></div><h1 style="font-size:1.3rem;margin:0 0 4px">设置</h1><div class="small ink2" style="margin:0 0 6px">${syncTxt}</div>
+  return `<div class="top"><button class="back" data-a="go" data-p="home">‹ 首页</button></div><h1 style="font-size:1.3rem;margin:0 0 4px">设置</h1>${["ok", "idb", "connecting"].includes(S.sync) ? "" : `<div class="small ink2" style="margin:0 0 6px">${syncTxt}</div>`}
     <div class="group-t">记账</div><div class="card" style="padding:4px 16px">
-      ${row("catMgr", "grid", "分类管理", "新增、排序、归档，设置哪些算固定支出", "›", 'data-t="exp"')}
-      ${row("go", "card", "账户管理", "现金、银行卡、信用卡、借出借入", "›", 'data-p="assets"')}
-      ${row("go", "target", "预算与周期账单", "月度预算、分类预算、房租订阅", "›", 'data-p="budget"')}
+      ${row("catMgr", "grid", "分类管理", "", "›", 'data-t="exp"')}
+      ${row("go", "card", "账户管理", "", "›", 'data-p="assets"')}
+      ${row("go", "target", "预算与周期账单", "", "›", 'data-p="budget"')}
       ${row("tplMgr", "bolt", "常用模板", L(S.meta.templates.length + " 个", String(S.meta.templates.length)))}</div>
     <div class="group-t">数据</div><div class="card" style="padding:4px 16px">
-      ${row("exportCSV", "upload", "导出 CSV", "可用 Excel / WPS 打开")}
-      ${row("importCSV", "download", "导入 CSV", "支持本应用导出的格式，导入前可预览")}
-      ${row("backup", "archive", "备份全部数据", "包括账户、分类、预算和回收站")}
+      ${row("exportCSV", "upload", "导出 CSV", "")}
+      ${row("importCSV", "download", "导入 CSV", "")}
+      ${row("backup", "archive", "备份全部数据", "")}
       ${row("restore", "restore", "从备份恢复")}
       ${row("trash", "trash", "最近删除", trash ? L(trash + " 笔，可恢复", trash + " bills, restorable") : L("空", "Empty"))}
-      ${row("demo", "sparkle", demo ? "清除演示数据" : "载入演示数据", demo ? "只删除演示账单，不影响你自己记的" : "体验各项功能")}
-      ${row("clearAll", "warning", '<span class="danger">清空所有数据</span>', "需要二次确认")}</div>
+      ${row("demo", "sparkle", demo ? "清除演示数据" : "载入演示数据", "")}
+      ${row("clearAll", "warning", '<span class="danger">清空所有数据</span>', "")}</div>
+    ${ANDROID ? (() => { let on = false; try { on = window.AndroidBridge.hasAccess(); } catch (e) {} return `<div class="group-t">${L("自动记账（安卓）", "Auto-record (Android)")}</div><div class="card" style="padding:4px 16px">
+      ${row("autoAccess", "bolt", L("通知识别", "Notification detection"), on ? L("已开启", "On") : L("未开启", "Off"), on ? L("设置 ›", "Settings ›") : L("去开启 ›", "Turn on ›"))}
+      ${row("autoLog", "doc", L("识别记录", "Detection log"), "")}</div>`; })() : ""}
     <div class="group-t">安全与隐私</div><div class="card" style="padding:4px 16px">
-      ${row("lockSet", "lock", "应用锁", LK && LK.hash ? "已开启 · 离开 1 分钟后需要密码" : "未开启", LK && LK.hash ? "关闭 ›" : "开启 ›")}
-      ${row("privacy", "shield", "隐私说明", "数据存在哪里、谁能看到")}
+      ${row("lockSet", "lock", "应用锁", LK && LK.hash ? "已开启" : "未开启", LK && LK.hash ? "关闭 ›" : "开启 ›")}
       <div class="toggle" style="box-shadow:inset 50px 0 0 var(--card),inset 0 1px 0 var(--line);justify-content:flex-start;gap:12px">${uiIco("text")}<span style="flex:1">大字体</span><button class="sw ${document.documentElement.classList.contains("big") ? "on" : ""}" data-a="bigFont" role="switch" aria-checked="${document.documentElement.classList.contains("big")}" aria-label="大字体"></button></div></div>
     <div class="group-t">语言 / Language</div><div class="card" style="padding:12px 16px"><div class="seg"><button class="${LANG === "zh" ? "on" : ""}" data-a="lang" data-v="zh" lang="zh">简体中文</button><button class="${LANG === "en" ? "on" : ""}" data-a="lang" data-v="en" lang="en">English</button></div></div>
-    <div class="group-t">关于</div><div class="card" style="padding:4px 16px">${row("rules", "info", "统计口径说明", "转账、退款、报销、信用卡怎么算")}</div>
-    <p class="tiny muted" style="text-align:center;margin:16px 0">没有广告，没有借贷入口，不读取短信、通知和支付账户。${PWA ? "<br>" + L("离线版 ", "Offline version ") + (window.LEDGER_VERSION || "") : ""}</p>`;
+    ${PWA ? `<p class="tiny muted" style="text-align:center;margin:16px 0">${window.LEDGER_VERSION || ""}</p>` : ""}`;
 }
 function openCatMgr(type) {
   openSheet({ live: true, type, render: (sh) => {
@@ -2576,17 +2621,18 @@ function openCatEdit(type, id) {
     <div style="display:flex;justify-content:center;margin:4px 0 6px">${catIco(sh.Cc, "lg")}</div>
     <div class="lbl">图标</div><div class="glyph-grid">${GLYPH_PICK.map((k) => `<button class="${sh.Cc.ik === k ? "on" : ""}" data-a="ceIcon" data-v="${k}" aria-label="${k}">${gsvg(k)}</button>`).join("")}</div>
     <div class="lbl">颜色</div><div class="swatches">${[...HUES.slice(0, -1), -1].map((h) => `<button class="${(sh.Cc.hue != null ? sh.Cc.hue : -2) === h ? "on" : ""}" data-a="ceHue" data-v="${h}" style="--h:${h < 0 ? 220 : h};--s:${h < 0 ? 0 : 1}" aria-label="颜色"></button>`).join("")}</div>
-    ${type === "exp" ? `<div class="toggle"><div><div>固定 / 低频大额</div><div class="tiny muted">如房租、保险、学费。单独展示，默认不占日常预算</div></div><button class="sw ${sh.Cc.fixed ? "on" : ""}" data-a="ceFixed" role="switch" aria-checked="${!!sh.Cc.fixed}" aria-label="固定支出"></button></div>` : ""}
+    ${type === "exp" ? `<div class="toggle"><div>固定支出</div><button class="sw ${sh.Cc.fixed ? "on" : ""}" data-a="ceFixed" role="switch" aria-checked="${!!sh.Cc.fixed}" aria-label="固定支出"></button></div>` : ""}
     <div class="err" id="ceErr"></div><div class="btns" style="margin-top:8px">${c0 ? `<button class="btn" data-a="ceArch">归档</button>` : ""}<button class="btn p" data-a="ceSave">保存</button></div>`,
     mount: (b, sh) => { $("#ceName", b).oninput = (e) => (sh.Cc.name = e.target.value); }, type, isNew: !c0 });
 }
 function openTplMgr() {
-  openSheet({ live: true, render: () => shHead("常用模板") + (S.meta.templates.length ? S.meta.templates.map((t) => `<div class="list-row">${uiIco("bolt")}<span class="mid"><div>${esc(t.name)}</div><div class="tiny muted">${TN(t.type)} · ${esc(t.type === "tr" ? aName(t.acct) + " → " + aName(t.to) : (cat(t.cat) || {}).name || "")} · ${esc(aName(t.type === "tr" ? t.to : t.acct))}</div></span><span class="num">${F$(t.amount)}</span><button class="ibtn" data-a="tplDel" data-id="${t.id}" aria-label="删除模板">${svg("x")}</button></div>`).join("") : `<div class="empty"><p>打开任意一笔账单，点「存为模板」，以后记同样的账只要点一下。</p></div>`) });
+  openSheet({ live: true, render: () => shHead("常用模板") + (S.meta.templates.length ? S.meta.templates.map((t) => `<div class="list-row">${uiIco("bolt")}<span class="mid"><div>${esc(t.name)}</div><div class="tiny muted">${TN(t.type)} · ${esc(t.type === "tr" ? aName(t.acct) + " → " + aName(t.to) : (cat(t.cat) || {}).name || "")} · ${esc(aName(t.type === "tr" ? t.to : t.acct))}</div></span><span class="num">${F$(t.amount)}</span><button class="ibtn" data-a="tplDel" data-id="${t.id}" aria-label="删除模板">${svg("x")}</button></div>`).join("") : `<div class="empty"><p>${L("暂无模板", "No templates")}</p></div>`) });
 }
 
 /* --- 文件 --- */
 let dl = undefined;
 async function saveFile(name, text) {
+  if (ANDROID) { window.AndroidBridge.saveFile(name, name.endsWith(".csv") ? "text/csv" : "application/json", text); return; }
   if (PWA) {
     const type = name.endsWith(".csv") ? "text/csv" : "application/json";
     try {
@@ -2600,10 +2646,10 @@ async function saveFile(name, text) {
     try { await dl.save({ filename: name, data: text }); markSaved(name); return; }
     catch (e) { if (e && e.code === "declined") { toast("已取消"); return; } if (e && e.code === "rate_limited") { toast("请稍后再试"); return; } }
   }
-  openSheet({ render: () => shHead("复制数据") + `<p class="small ink2">当前环境不能直接下载文件。请复制下面的内容，粘贴保存为 <b>${esc(name)}</b>。</p><textarea class="inp" style="width:100%" readonly>${esc(text)}</textarea><button class="btn p block" data-a="copyTa" style="margin-top:8px">复制全部</button>`, text });
+  openSheet({ render: () => shHead("复制数据") + `<p class="small ink2">${esc(name)}</p><textarea class="inp" style="width:100%" readonly>${esc(text)}</textarea><button class="btn p block" data-a="copyTa" style="margin-top:8px">复制全部</button>`, text });
 }
 function markSaved(name) {
-  toast(name.endsWith(".json") ? "备份已导出，建议存到「文件」或发给自己" : "已导出");
+  toast("已导出");
   if (name.endsWith(".json")) { const m = meta2(); m.settings.lastBackup = today(); Store.putMeta(m); }
 }
 const stamp = () => today().replace(/-/g, "");
@@ -2617,13 +2663,13 @@ async function onFile(e) {
     if (r.error) return toast(r.error);
     openSheet({ r, render: (sh) => { const r = sh.r; return shHead("导入预览") + `<div class="eq small"><div class="kv"><span>将导入</span><span>${L(r.txs.length + " 笔", String(r.txs.length))}</span></div><div class="kv"><span>跳过重复</span><span>${L(r.dup + " 笔", String(r.dup))}</span></div><div class="kv"><span>新建账户</span><span>${r.newAccts.map((a) => esc(N(a.name))).join("、") || "无"}</span></div><div class="kv"><span>新建分类</span><span>${r.newCats.map((c) => esc(N(c.name))).join("、") || "无"}</span></div></div>
       ${r.errors.length ? `<div class="note-box">${L(r.errors.length + " 行有问题，不会导入：", r.errors.length + " rows have problems and will be skipped:")}<br>${r.errors.slice(0, 8).map((x) => L("第 " + x.line + " 行：", "Line " + x.line + ": ") + esc(x.msg)).join("<br>")}${r.errors.length > 8 ? "<br>…" : ""}</div>` : ""}
-      <p class="tiny muted">新建的账户默认是「余额账户」，期初为 0，导入后可在资产页修改。</p><div class="btns"><button class="btn" data-a="close">取消</button><button class="btn p" data-a="impOk" ${r.txs.length ? "" : "disabled"}>${L(`导入 ${r.txs.length} 笔`, `Import ${r.txs.length}`)}</button></div>`; } });
+      <div class="btns"><button class="btn" data-a="close">取消</button><button class="btn p" data-a="impOk" ${r.txs.length ? "" : "disabled"}>${L(`导入 ${r.txs.length} 笔`, `Import ${r.txs.length}`)}</button></div>`; } });
   } else {
     let j; try { j = JSON.parse(text); } catch (x) { return toast("不是有效的备份文件"); }
     if (!j || j.app !== "ledger" || !Array.isArray(j.txs) || !j.meta) return toast("不是本应用的备份文件");
     const txs = j.txs.filter((t) => t && t.id && typeof t.amount === "number" && t.type && /^[\w\-.~:@+]+$/.test(t.id));
     openSheet({ j: { ...j, txs }, render: (sh) => shHead("从备份恢复") + `<div class="eq small"><div class="kv"><span>备份时间</span><span>${esc(String(sh.j.exportedAt || "").replace("T", " ").slice(0, 16))}</span></div><div class="kv"><span>账单</span><span>${sh.j.txs.filter((t) => !t.deleted).length}${L(" 笔", "")}</span></div><div class="kv"><span>账户</span><span>${(sh.j.meta.accounts || []).length}${L(" 个", "")}</span></div></div>
-      <div class="note-box">${L(`恢复会<b>替换</b>当前的全部数据（当前 ${D().txs.length} 笔）。建议先备份当前数据。恢复后 10 秒内可以撤销。`, `Restoring will <b>replace</b> all current data (${D().txs.length} bills now). Back up first. You can undo within 10 seconds.`)}</div>
+      <div class="note-box">${L(`将替换当前全部数据（${D().txs.length} 笔）`, `Replaces all current data (${D().txs.length} bills)`)}</div>
       <div class="btns" style="flex-direction:column"><button class="btn block" data-a="backup">先备份当前数据</button><button class="btn d block" data-a="restoreOk">替换并恢复</button></div>` });
   }
 }
@@ -2736,17 +2782,17 @@ async function onPhoto(e) {
   try {
     const r = await recognize(file, hint);
     F.ocrRaw = r.raw || "";
-    if (!r.amount) { F.info = L("没认出金额，请手动输入。可以换一张更清晰的截图再试。", "Couldn't find an amount — please enter it, or try a clearer screenshot."); refreshForm(); return; }
+    if (!r.amount) { F.info = L("未识别到金额", "No amount found"); refreshForm(); return; }
     const q = C.parseQuick([r.merchant, r.pay, r.hint].filter(Boolean).join(" "), S.meta, today());
     const type = r.type === "inc" ? "inc" : "exp";
     Object.assign(F, { type, expr: centsToExpr(r.amount), note: (r.merchant || "").slice(0, 30) || F.note, date: r.date || F.date });
     const cat = r.cat && S.meta.cats[type].some((c) => c.id === r.cat && !c.archived) ? r.cat : q.type === type && q.cat ? q.cat : null;
     if (cat) F.cat = cat; else if (!S.meta.cats[type].some((c) => c.id === F.cat)) F.cat = firstCat(type);
     if (q.acct) F.acct = q.acct;
-    F.info = L("识别结果：", "Recognized: ") + [TN(type), "¥" + F$(r.amount), r.merchant, short(F.date)].filter(Boolean).join(" · ") + L("。请检查分类和账户，没问题点「完成」", ". Check the category and account, then tap Done.");
+    F.info = [TN(type), "¥" + F$(r.amount), r.merchant, short(F.date)].filter(Boolean).join(" · ");
     refreshForm();
   } catch (x) {
-    F.info = /load|fetch|network/i.test(String(x && x.message)) ? L("识别模型下载失败，请联网后再试；也可以手动输入。", "Couldn't download the recognition model. Connect to the internet and try again, or enter it manually.") : L("识别失败，请手动输入。", "Recognition failed — please enter it manually.");
+    F.info = /load|fetch|network/i.test(String(x && x.message)) ? L("识别模型下载失败", "Could not download the model") : L("识别失败", "Recognition failed");
     refreshForm();
   }
 }
@@ -2778,8 +2824,7 @@ function openLockSet() {
     return;
   }
   let first = null;
-  openSheet({ render: () => shHead("设置 4 位密码") + `<p class="small ink2" style="text-align:center" id="lsT">输入新密码</p><div style="display:flex;flex-direction:column;align-items:center">${pinPad("ls")}</div>
-    <p class="tiny muted" style="margin-top:12px">打开或离开超过 1 分钟后需要输入密码。这是防止别人随手翻看的界面锁，不是加密；忘记密码可等待 30 秒后重置。</p>`,
+  openSheet({ render: () => shHead("设置 4 位密码") + `<p class="small ink2" style="text-align:center" id="lsT">输入新密码</p><div style="display:flex;flex-direction:column;align-items:center">${pinPad("ls")}</div>`,
     mount: () => { PIN = { val: "", dots: "lsD", done: async (v) => {
       if (!first) { first = v; PIN.val = ""; paintDots(); $("#lsT").textContent = "再输入一次确认"; return; }
       if (v !== first) { first = null; PIN.val = ""; paintDots(); $("#lsT").textContent = "两次不一致，请重新输入"; return; }
@@ -2889,7 +2934,7 @@ async function loadDemo() {
   await Store.putMeta(m);
   const fail = await Store.bulk(txs.map((t) => ({ id: t.id, data: t })), toastProgress("载入演示数据"));
   S.ym = C.ymOf(today()); go("home");
-  toast(fail ? L(fail + " 笔写入失败", fail + " writes failed") : L(`已载入 ${txs.length} 笔演示账单，可在设置里一键清除`, `Loaded ${txs.length} demo bills. Clear them anytime in Settings.`), { ms: 3500 });
+  toast(fail ? L(fail + " 笔写入失败", fail + " writes failed") : L("已载入演示数据", "Demo data loaded"), { ms: 3500 });
 }
 async function clearDemo() {
   const ids = D().txs.filter((t) => t.demo).map((t) => t.id);
@@ -2926,7 +2971,7 @@ const A = {
   },
   txDel: (d) => {
     const t = S.txs.get(d.id), n = C.linked(D().txs, t.id).length + (t.group && !t.aaPay && !t.aaWaive ? D().live.filter((x) => x.group === t.group && x.id !== t.id).length : 0);
-    if (n) confirmSheet(L("删除账单", "Delete bill"), L(`这笔账单有 ${n} 笔关联记录（退款、报销，或这次 AA 的份额和收款），会一起删除。删除后可在「最近删除」里恢复。`, `This bill has ${n} linked records (refunds, reimbursements, or this AA's share and repayments). They'll be deleted too. You can restore them from Recently deleted.`), L("一起删除", "Delete all"), async () => { closeSheet(); await deleteTxs([t.id]); });
+    if (n) confirmSheet(L("删除账单", "Delete bill"), L(`将同时删除 ${n} 笔关联记录`, `${n} linked records will also be deleted`), L("一起删除", "Delete all"), async () => { closeSheet(); await deleteTxs([t.id]); });
     else { closeSheet(); deleteTxs([t.id]); }
   },
   txRefund: (d) => { const o = S.txs.get(d.id), r = C.refundable(D().txs, o); closeSheet(); openForm({ type: "refund", refId: o.id, acct: o.acct, expr: centsToExpr(r.maxRefund), note: "退款" }); },
@@ -2937,7 +2982,7 @@ const A = {
     const name = (t.note || txTitle(t)).slice(0, 10);
     if (m.templates.some((x) => x.name === name && x.amount === t.amount)) return toast("已经有这个模板了");
     m.templates.push({ id: C.uid("p_"), name, type: t.type, amount: t.amount, cat: t.cat, acct: t.acct, to: t.to, note: t.note || "" });
-    await Store.putMeta(m); toast("已存为模板，记账时点一下就能用");
+    await Store.putMeta(m); toast("已存为模板");
   },
 
   // 表单
@@ -2974,10 +3019,10 @@ const A = {
   aaWaive: () => {
     const sh = topSheet(), G = aaOf(sh.g); if (!G) return;
     const c = cat(G.cat) && S.meta.cats.exp.some((x) => x.id === G.cat) ? G.cat : firstCat("exp");
-    confirmSheet(L("剩下的不收了", "Write off the rest"), L(`待收的 ${Y(G.left)} 会计入你自己的「${esc(N((cat(c) || {}).name))}」支出，这次 AA 就此结清。`, `The ${Y(G.left)} still owed will count as your own ${esc(N((cat(c) || {}).name))} spending, and this AA will be settled.`), L("不收了", "Write off"), async () => {
+    confirmSheet(L("剩下的不收了", "Write off the rest"), L(`${Y(G.left)} 计入「${esc(N((cat(c) || {}).name))}」支出`, `${Y(G.left)} will count as ${esc(N((cat(c) || {}).name))} spending`), L("不收了", "Write off"), async () => {
       const t = { id: C.uid("t_"), type: "exp", amount: G.left, cat: c, acct: G.recv, date: today(), note: G.title + L(" · 未收回", " · not repaid"), tags: [], ts: Date.now(), group: G.g, aaWaive: true };
       if (G.owe.demo) t.demo = true;
-      await Store.putTx(t); toast("已结清，未收回的部分计入支出", { undo: () => Store.delTx(t.id) });
+      await Store.putTx(t); toast("已结清", { undo: () => Store.delTx(t.id) });
     }, false);
   },
   aaConvert: (d) => { closeSheet(); openAAConvert(d.id); },
@@ -3011,14 +3056,27 @@ const A = {
     F.type = r.type; if (r.amount) F.expr = centsToExpr(r.amount);
     F.cat = r.cat || S.meta.settings.lastCat[r.type] || firstCat(r.type); if (!S.meta.cats[r.type].some((c) => c.id === F.cat)) F.cat = firstCat(r.type);
     if (r.acct) F.acct = r.acct; F.date = r.date; if (r.note) F.note = r.note;
-    F.info = L("已识别：", "Recognized: ") + [TN(r.type), r.amount ? "¥" + F$(r.amount) : L("金额未识别", "amount not found"), N((cat(F.cat) || {}).name), aName(F.acct), short(F.date)].join(" · ") + L("。请检查后点「完成」", ". Check it, then tap Done.");
+    F.info = [TN(r.type), r.amount ? "¥" + F$(r.amount) : L("金额未识别", "amount not found"), N((cat(F.cat) || {}).name), aName(F.acct), short(F.date)].join(" · ");
     refreshForm();
   },
   fPaste: async () => {
-    try { const t = await navigator.clipboard.readText(); if (!t || !t.trim()) return ferr("剪贴板是空的"); $("#fQuick").value = t.trim().slice(0, 200); A.fQuick(); }
+    try { const t = ANDROID ? window.AndroidBridge.readClipboard() : await navigator.clipboard.readText(); if (!t || !t.trim()) return ferr("剪贴板是空的"); $("#fQuick").value = t.trim().slice(0, 200); A.fQuick(); }
     catch (e) { ferr("读不到剪贴板，请长按输入框选择「粘贴」"); }
   },
-  ocrShow: () => openSheet({ render: () => shHead(L("识别出的文字", "Recognized text")) + `<p class="small ink2">${L("如果金额或商户认错了，可以把这段文字复制发给 Claude，用来改进识别规则。", "If the amount or merchant was wrong, copy this text and send it to Claude to improve the rules.")}</p><textarea class="inp" style="width:100%" readonly>${esc(F && F.ocrRaw ? F.ocrRaw : L("（没有读出任何文字）", "(no text was read)"))}</textarea><button class="btn p block" data-a="copyTa" style="margin-top:8px">${L("复制", "Copy")}</button>`, text: F && F.ocrRaw ? F.ocrRaw : "" }),
+  ocrShow: () => openSheet({ render: () => shHead(L("识别出的文字", "Recognized text")) + `<textarea class="inp" style="width:100%" readonly>${esc(F && F.ocrRaw ? F.ocrRaw : L("（没有读出任何文字）", "(no text was read)"))}</textarea><button class="btn p block" data-a="copyTa" style="margin-top:8px">${L("复制", "Copy")}</button>`, text: F && F.ocrRaw ? F.ocrRaw : "" }),
+  autoOk: (d) => {
+    const p = S.pending.find((x) => x.id === d.id); if (!p) return;
+    const ty = p.type === "exp" ? "exp" : "inc";
+    const q = C.parseQuick([p.merchant, p.account, p.raw].filter(Boolean).join(" "), S.meta, today());
+    openForm({ type: ty, expr: centsToExpr(p.amount), note: p.merchant || "", date: C.ymd(new Date(p.time)), acct: q.acct || undefined, cat: q.type === ty && q.cat ? q.cat : undefined, pendingId: p.id });
+    F.info = p.source + (p.type === "refund" ? L(" · 可能是退款", " · maybe a refund") : "");
+    refreshForm();
+  },
+  autoIgnore: (d) => { window.AndroidBridge.removePending(d.id); refreshPending(); toast(L("已忽略", "Ignored")); },
+  autoIgnoreAll: () => confirmSheet(L("全部忽略", "Ignore all"), "", L("全部忽略", "Ignore all"), async () => { for (const p of S.pending) window.AndroidBridge.removePending(p.id); refreshPending(); }, false),
+  autoAccess: () => window.AndroidBridge.openAccess(),
+  autoLog: () => openAutoLog(),
+  autoLogClear: () => { window.AndroidBridge.clearLog(); closeSheet(); toast(L("已清空", "Cleared")); },
   fPhoto: () => { const f = $("#photoIn"); f.value = ""; f.click(); },
   fTpl: (d) => { const t = S.meta.templates.find((x) => x.id === d.id); if (!t) return; Object.assign(F, { type: t.type, cat: t.cat || F.cat, acct: acct(t.acct) ? t.acct : F.acct, to: t.to || "", expr: centsToExpr(t.amount), note: t.note || t.name }); refreshForm(); },
 
@@ -3037,7 +3095,7 @@ const A = {
   rFreq: (d) => { const sh = topSheet(); sh.R.freq = d.v; if (d.v === "week" && sh.R.wday == null) sh.R.wday = 1; paintSheet(sh); },
   rWday: (d, el) => { const sh = topSheet(); sh.R.wday = Number(d.v); pickOn(el); },
   rAuto: () => { const sh = topSheet(); sh.R.auto = !sh.R.auto; paintSheet(sh); },
-  rStop: () => { const sh = topSheet(); confirmSheet("停止自动转账", "从今天起不再计入。之前已经自动计入的转账会保留在余额里。", "停止", async () => { const m = meta2(), r = m.recurring.find((x) => x.id === sh.R.id); if (r) r.end = C.addDays(today(), -1); await Store.putMeta(m); closeSheet(); toast("已停止"); }, false); },
+  rStop: () => { const sh = topSheet(); confirmSheet("停止自动转账", "", "停止", async () => { const m = meta2(), r = m.recurring.find((x) => x.id === sh.R.id); if (r) r.end = C.addDays(today(), -1); await Store.putMeta(m); closeSheet(); toast("已停止"); }, false); },
   rType: (d) => { const sh = topSheet(); sh.R.type = d.v; if (d.v !== "tr") sh.R.auto = false; if (d.v !== "tr") sh.R.cat = firstCat(d.v); else if (!sh.R.to) sh.R.to = (accts((a) => a.id !== sh.R.acct)[0] || {}).id; paintSheet(sh); },
   rCat: (d, el) => { const sh = topSheet(); sh.R.cat = d.v; pickOn(el); },
   rAcct: (d, el) => { const sh = topSheet(); sh.R.acct = d.v; if (sh.R.type === "tr") { if (sh.R.to === d.v) sh.R.to = ""; paintSheet(sh); } else pickOn(el); },
@@ -3061,9 +3119,9 @@ const A = {
       old.end = old.end && old.end < yd ? old.end : yd;
       m.recurring.push({ ...x, id: C.uid("r_"), startDate: t0, start: t0.slice(0, 7), end: undefined, skipped: [] });
     } else if (i >= 0) m.recurring[i] = x; else m.recurring.push(x);
-    await Store.putMeta(m); closeSheet(); toast(old && old.auto && keyChanged ? "已保存，从今天起按新设置计入" : "已保存");
+    await Store.putMeta(m); closeSheet(); toast("已保存");
   },
-  rDel: () => { const sh = topSheet(); confirmSheet(sh.R.auto ? "删除自动转账" : "删除周期账单", sh.R.auto ? "删除后，它之前自动计入的转账也会一起从余额里去掉。如果只是以后不再转，请用「从今天起停止」。" : "已经记入的账单会保留。", "删除", async () => { const m = meta2(); m.recurring = m.recurring.filter((r) => r.id !== sh.R.id); await Store.putMeta(m); closeSheet(); toast("已删除"); }); },
+  rDel: () => { const sh = topSheet(); confirmSheet(sh.R.auto ? "删除自动转账" : "删除周期账单", sh.R.auto ? "已计入的转账会一并移除" : "", "删除", async () => { const m = meta2(); m.recurring = m.recurring.filter((r) => r.id !== sh.R.id); await Store.putMeta(m); closeSheet(); toast("已删除"); }); },
 
   // 预算
   budEdit: () => openBudgetEdit(),
@@ -3089,7 +3147,7 @@ const A = {
   selMode: () => { S.sel = S.sel ? null : new Set(); render(); },
   selT: (d) => { S.sel.has(d.id) ? S.sel.delete(d.id) : S.sel.add(d.id); paintBillList(); paintSelbar(); },
   selAll: () => { const ids = filteredTxs().map((t) => t.id); if (ids.every((id) => S.sel.has(id))) S.sel.clear(); else ids.forEach((id) => S.sel.add(id)); paintBillList(); paintSelbar(); },
-  selDel: () => { const ids = [...S.sel]; confirmSheet(L("删除 " + ids.length + " 笔账单", "Delete " + ids.length + " bills"), "关联的退款、报销和 AA 记录会一起删除。删除后可在「最近删除」恢复。", "删除", async () => { S.sel = null; await deleteTxs(ids); render(); }); },
+  selDel: () => { const ids = [...S.sel]; confirmSheet(L("删除 " + ids.length + " 笔账单", "Delete " + ids.length + " bills"), "", "删除", async () => { S.sel = null; await deleteTxs(ids); render(); }); },
   selCat: () => {
     const sel = [...S.sel].map((id) => S.txs.get(id)).filter(Boolean);
     const exp = sel.filter((t) => t.type === "exp"), inc = sel.filter((t) => t.type === "inc");
@@ -3117,8 +3175,8 @@ const A = {
     const i = m.accounts.findIndex((a) => a.id === x.id); if (i >= 0) m.accounts[i] = x; else m.accounts.push(x);
     await Store.putMeta(m); closeSheet(); toast("已保存");
   },
-  aArch: async () => { const sh = topSheet(), m = meta2(), a = m.accounts.find((x) => x.id === sh.A.id); a.archived = !a.archived; await Store.putMeta(m); closeSheet(); toast(a.archived ? "已归档，历史账单不受影响" : "已恢复"); },
-  aDel: () => { const sh = topSheet(); confirmSheet("删除账户", "这个账户还没有任何账单，可以直接删除。", "删除", async () => { const m = meta2(); m.accounts = m.accounts.filter((a) => a.id !== sh.A.id); await Store.putMeta(m); closeAll(); toast("已删除"); }); },
+  aArch: async () => { const sh = topSheet(), m = meta2(), a = m.accounts.find((x) => x.id === sh.A.id); a.archived = !a.archived; await Store.putMeta(m); closeSheet(); toast(a.archived ? "已归档" : "已恢复"); },
+  aDel: () => { const sh = topSheet(); confirmSheet("删除账户", "", "删除", async () => { const m = meta2(); m.accounts = m.accounts.filter((a) => a.id !== sh.A.id); await Store.putMeta(m); closeAll(); toast("已删除"); }); },
   acctPay: (d) => { const a = acct(d.id), owed = Math.max(0, -D().bal[a.id].bal); closeSheet(); openForm({ type: "tr", to: a.id, acct: (accts((x) => !C.isLiab(x) && x.type !== "receivable")[0] || {}).id, expr: owed ? centsToExpr(owed) : "", note: a.type === "credit" ? "信用卡还款" : "还款" }); },
   acctCollect: (d) => { const a = acct(d.id), v = Math.max(0, D().bal[a.id].bal); closeSheet(); openForm({ type: "tr", acct: a.id, to: (accts((x) => x.type === "wallet" || x.type === "bank")[0] || {}).id, expr: v ? centsToExpr(v) : "", note: "收回" }); },
   acctTr: (d) => { closeSheet(); openForm({ type: "tr", acct: d.id, to: (accts((x) => x.id !== d.id)[0] || {}).id }); },
@@ -3126,9 +3184,9 @@ const A = {
   acctBills: (d) => { Object.assign(S.bf, { acct: d.id, range: "all" }); closeAll(); go("bills"); },
   nwInfo: () => {
     const d = D(), nw = C.netWorth(S.meta, d.bal);
-    openSheet({ render: () => shHead("净资产怎么算") + `<div class="eq"><div class="kv"><span>资产合计</span><span class="num">${F$(nw.assets)}</span></div>${S.meta.accounts.filter((a) => !C.isLiab(a)).map((a) => `<div class="kv tap" data-a="acct" data-id="${a.id}"><span>　${esc(N(a.name))}</span><span class="num">${F$(d.bal[a.id].bal)}</span></div>`).join("")}
+    openSheet({ render: () => shHead("净资产") + `<div class="eq"><div class="kv"><span>资产合计</span><span class="num">${F$(nw.assets)}</span></div>${S.meta.accounts.filter((a) => !C.isLiab(a)).map((a) => `<div class="kv tap" data-a="acct" data-id="${a.id}"><span>　${esc(N(a.name))}</span><span class="num">${F$(d.bal[a.id].bal)}</span></div>`).join("")}
       <div class="kv"><span>负债合计</span><span class="num">${F$(nw.liabilities)}</span></div>${S.meta.accounts.filter((a) => C.isLiab(a)).map((a) => `<div class="kv tap" data-a="acct" data-id="${a.id}"><span>　${esc(N(a.name))}</span><span class="num">${F$(-d.bal[a.id].bal)}</span></div>`).join("")}
-      <div class="kv"><span style="color:var(--ink);font-weight:600">净资产 = 资产 − 负债</span><span class="num" style="font-weight:600">${F$(nw.net)}</span></div></div><p class="tiny muted">点任一账户可查看它的余额是怎么算出来的。</p>` });
+      <div class="kv"><span style="color:var(--ink);font-weight:600">净资产 = 资产 − 负债</span><span class="num" style="font-weight:600">${F$(nw.net)}</span></div></div>` });
   },
 
   // 设置
@@ -3151,7 +3209,7 @@ const A = {
   ceArch: async () => {
     const sh = topSheet(), m = meta2(), arr = m.cats[sh.type];
     if (arr.filter((c) => !c.archived).length <= 1) return ($("#ceErr").textContent = "至少保留一个分类");
-    arr.find((c) => c.id === sh.Cc.id).archived = true; await Store.putMeta(m); closeSheet(); if (F) { if (F.cat === sh.Cc.id) F.cat = firstCat(F.type); refreshForm(); } toast("已归档，历史账单仍显示原分类");
+    arr.find((c) => c.id === sh.Cc.id).archived = true; await Store.putMeta(m); closeSheet(); if (F) { if (F.cat === sh.Cc.id) F.cat = firstCat(F.type); refreshForm(); } toast("已归档");
   },
   tplMgr: () => openTplMgr(),
   tplDel: async (d) => { const m = meta2(); m.templates = m.templates.filter((t) => t.id !== d.id); await Store.putMeta(m); },
@@ -3170,13 +3228,13 @@ const A = {
   copyTa: async () => { try { await navigator.clipboard.writeText(topSheet().text); toast("已复制"); } catch (e) { const ta = $("textarea", topSheet().body); ta.select(); toast("请长按选择后复制"); } },
   trash: () => openSheet({ live: true, render: () => {
     const del = D().txs.filter((t) => t.deleted).sort((a, b) => b.deleted - a.deleted);
-    return shHead("最近删除", del.length ? `<button class="link danger" data-a="trashEmpty">清空</button>` : "") + (del.length ? `<p class="tiny muted">删除的账单不参与任何统计。恢复后所有数字会重新计算。</p>` + del.map((t) => `<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;min-width:0">${itemRow(t).replace('data-a="tx"', "")}</div><button class="btn" data-a="trashRestore" data-id="${esc(t.id)}" style="padding:8px 12px;min-height:38px">恢复</button></div>`).join("") : `<div class="empty"><p>回收站是空的</p></div>`);
+    return shHead("最近删除", del.length ? `<button class="link danger" data-a="trashEmpty">清空</button>` : "") + (del.length ? ``+ del.map((t) => `<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;min-width:0">${itemRow(t).replace('data-a="tx"', "")}</div><button class="btn" data-a="trashRestore" data-id="${esc(t.id)}" style="padding:8px 12px;min-height:38px">恢复</button></div>`).join("") : `<div class="empty"><p>回收站是空的</p></div>`);
   } }),
   trashRestore: (d) => { const t = S.txs.get(d.id); const ids = D().txs.filter((x) => x.deleted && x.deleted === t.deleted).map((x) => x.id); restoreTxs(ids); },
-  trashEmpty: () => confirmSheet("彻底删除", "回收站里的账单会被永久删除，无法恢复。", "永久删除", async () => { const ids = D().txs.filter((t) => t.deleted).map((t) => t.id); await Store.bulk(ids.map((id) => ({ id, data: null }))); toast("已清空回收站"); }),
-  demo: () => { if (D().txs.some((t) => t.demo)) confirmSheet("清除演示数据", "只删除演示账单和演示账户，你自己记的账不受影响。", "清除", clearDemo); else loadDemo(); },
-  clearAll: () => openSheet({ render: () => shHead("清空所有数据") + `<div class="note-box">${L(`将删除全部 ${D().txs.length} 笔账单（含回收站），并把账户、分类、预算恢复为默认。建议先备份。`, `This deletes all ${D().txs.length} bills (including the trash) and resets accounts, categories and budgets. Back up first.`)}</div>
-    <button class="btn block" data-a="backup" style="margin-bottom:10px">先备份</button><p class="small ink2">请输入「清空」两个字确认：</p><div class="field"><input class="inp" id="clrI" autocomplete="off"></div>
+  trashEmpty: () => confirmSheet("彻底删除", "无法恢复", "永久删除", async () => { const ids = D().txs.filter((t) => t.deleted).map((t) => t.id); await Store.bulk(ids.map((id) => ({ id, data: null }))); toast("已清空回收站"); }),
+  demo: () => { if (D().txs.some((t) => t.demo)) confirmSheet("清除演示数据", "", "清除", clearDemo); else loadDemo(); },
+  clearAll: () => openSheet({ render: () => shHead("清空所有数据") + `<div class="note-box">${L(`将删除全部 ${D().txs.length} 笔账单并重置设置`, `Deletes all ${D().txs.length} bills and resets settings`)}</div>
+    <button class="btn block" data-a="backup" style="margin-bottom:10px">先备份</button><p class="small ink2">${L("输入「清空」确认", "Type DELETE to confirm")}</p><div class="field"><input class="inp" id="clrI" autocomplete="off"></div>
     <button class="btn d block" data-a="clearOk" id="clrB" disabled>清空所有数据</button>`, mount: (b) => { $("#clrI", b).oninput = (e) => ($("#clrB", b).disabled = !(e.target.value.trim() === "清空" || e.target.value.trim().toUpperCase() === "DELETE")); } }),
   clearOk: async () => { closeAll(); await replaceAll(C.defaultMeta(), [], "清空"); go("home"); },
   lockSet: () => openLockSet(),
@@ -3203,7 +3261,7 @@ function quickOpen(q) {
   const r = C.parseQuick(text, S.meta, today());
   if (q.get("type") === "inc") r.type = "inc";
   openForm({ type: r.type, expr: r.amount ? centsToExpr(r.amount) : "", cat: r.cat || undefined, acct: r.acct || undefined, date: r.date, note: q.get("note") || r.note || "" });
-  F.info = r.amount ? L("来自快捷指令：¥" + F$(r.amount) + "，请检查分类和账户后点「完成」", "From Shortcuts: ¥" + F$(r.amount) + ". Check the category and account, then tap Done.") : L("快捷指令没有识别出金额，请手动输入", "Shortcuts didn't find an amount — please enter it");
+  F.info = r.amount ? "¥" + F$(r.amount) : L("未识别到金额", "No amount found");
   refreshForm();
 }
 function openCustomRange() {
@@ -3235,6 +3293,7 @@ try { if (localStorage.getItem("ledger.big")) document.documentElement.classList
 const PAGES = { home: pageHome, bills: pageBills, stats: pageStats, budget: pageBudget, assets: pageAssets, settings: pageSettings };
 C.setL(L);
 applyLang();
+if (ANDROID) setTimeout(() => refreshPending(), 0);
 render();
 Store.init();
 (window.requestIdleCallback || ((f) => setTimeout(f, 800)))(() => {
