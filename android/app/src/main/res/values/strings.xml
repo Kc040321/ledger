@@ -3,4 +3,6 @@
     <string name="app_name">记账本</string>
     <string name="listener_name">记账本：识别付款通知</string>
     <string name="channel_name">识别到的付款</string>
+    <string name="a11y_name">记账本：自动记账</string>
+    <string name="a11y_desc">只读取支付宝、微信、云闪付和银行 App 的付款结果页和账单详情，记下金额、商户和时间。</string>
 </resources>

@@ -327,7 +327,7 @@ body{letter-spacing:.005em}
 <nav id="tabs" class="tabs" aria-label="主导航"></nav>
 <input type="file" id="fileIn" hidden>
 <input type="file" id="photoIn" accept="image/*" hidden>
-<script>window.LEDGER_PWA=true;window.LEDGER_ANDROID=true;window.LEDGER_VERSION="2026.11.11-1304";</script>
+<script>window.LEDGER_PWA=true;window.LEDGER_ANDROID=true;window.LEDGER_VERSION="2026.11.11-1318";</script>
 <script>
 const I18N_EN = {
 "存储空间已满，请先删除一些旧记录": "Storage is full — delete some old records first",
@@ -1957,10 +1957,45 @@ function autoCard() {
 function refreshPending(focus) {
   if (!ANDROID) return;
   try { S.pending = JSON.parse(window.AndroidBridge.getPending()) || []; } catch (e) { S.pending = []; }
+  if (S.ready && S.pending.some((p) => p.auto && p.amount > 0)) autoSavePending();
   S._keepScroll = true;
   if (focus && S.pending.length && S.page !== "home") { closeAll(); go("home"); } else render();
 }
 window.__ledgerPending = refreshPending;
+/* 有金额的支出/收入直接记入，不用确认；记错了点撤销 */
+async function autoSavePending() {
+  if (!ANDROID || !S.ready || S.autoBusy) return;
+  let on = true; try { on = window.AndroidBridge.getAutoSave(); } catch (e) {}
+  if (!on) return;
+  const list = S.pending.filter((p) => p.auto && p.amount > 0 && (p.type === "exp" || p.type === "inc"));
+  if (!list.length) return;
+  S.autoBusy = true;
+  const saved = [], st = S.meta.settings;
+  try {
+    for (const p of list) {
+      const ty = p.type;
+      const q = C.parseQuick([p.merchant, p.raw].filter(Boolean).join(" ").slice(0, 300), S.meta, today());
+      const qa = C.parseQuick([p.account, p.source].filter(Boolean).join(" "), S.meta, today());
+      const live = accts((a) => !a.archived);
+      let ac = qa.acct;
+      if (!ac && /花呗/.test(p.account)) ac = (live.find((a) => /花呗/.test(a.name)) || live.find((a) => a.type === "credit") || {}).id;
+      if (!ac && /银行|储蓄/.test(p.account)) ac = (live.find((a) => a.type === "bank") || {}).id;
+      if (!ac) ac = acct(st.lastAcct) && !acct(st.lastAcct).archived ? st.lastAcct : (live[0] || {}).id;
+      let c = q.type === ty && q.cat ? q.cat : st.lastCat[ty];
+      if (!S.meta.cats[ty].some((x) => x.id === c && !x.archived)) c = firstCat(ty);
+      const t = { id: C.uid("t_"), type: ty, amount: p.amount, cat: c, acct: ac, date: C.ymd(new Date(p.time)), note: (p.merchant || "").slice(0, 30), tags: [], ts: Date.now() };
+      await Store.putTx(t);
+      try { window.AndroidBridge.removePending(p.id); } catch (e) {}
+      saved.push(t);
+    }
+  } catch (e) {} finally { S.autoBusy = false; }
+  if (!saved.length) return;
+  try { S.pending = JSON.parse(window.AndroidBridge.getPending()) || []; } catch (e) {}
+  S._keepScroll = true; render();
+  const one = saved[0];
+  toast(saved.length === 1 ? L(`已记 ${one.note || TN(one.type)} ${one.type === "inc" ? "+" : "−"}${F$(one.amount)}`, `Recorded ${one.note || TN(one.type)} ${F$(one.amount)}`) : L(`已记 ${saved.length} 笔`, `Recorded ${saved.length}`),
+    { undo: async () => { for (const t of saved) await Store.delTx(t.id); toast(L("已撤销", "Undone")); } });
+}
 window.__ledgerBack = () => { if (sheets.length) { closeSheet(); return true; } if (S.page !== "home") { go("home"); return true; } return false; };
 window.__ledgerSaved = (name) => markSaved(name);
 function openAutoLog() {
@@ -2585,8 +2620,10 @@ function pageSettings() {
       ${row("trash", "trash", "最近删除", trash ? L(trash + " 笔，可恢复", trash + " bills, restorable") : L("空", "Empty"))}
       ${row("demo", "sparkle", demo ? "清除演示数据" : "载入演示数据", "")}
       ${row("clearAll", "warning", '<span class="danger">清空所有数据</span>', "")}</div>
-    ${ANDROID ? (() => { let on = false; try { on = window.AndroidBridge.hasAccess(); } catch (e) {} return `<div class="group-t">${L("自动记账（安卓）", "Auto-record (Android)")}</div><div class="card" style="padding:4px 16px">
+    ${ANDROID ? (() => { let on = false, scr = false, as = true; try { on = window.AndroidBridge.hasAccess(); scr = window.AndroidBridge.hasScreen(); as = window.AndroidBridge.getAutoSave(); } catch (e) {} return `<div class="group-t">${L("自动记账", "Auto-record")}</div><div class="card" style="padding:4px 16px">
+      ${row("autoScreen", "phone", L("读取付款页面", "Read payment screens"), scr ? L("已开启", "On") : L("未开启", "Off"), scr ? L("设置 ›", "Settings ›") : L("去开启 ›", "Turn on ›"))}
       ${row("autoAccess", "bolt", L("通知识别", "Notification detection"), on ? L("已开启", "On") : L("未开启", "Off"), on ? L("设置 ›", "Settings ›") : L("去开启 ›", "Turn on ›"))}
+      <div class="toggle" style="box-shadow:inset 50px 0 0 var(--card),inset 0 1px 0 var(--line);justify-content:flex-start;gap:12px">${uiIco("repeat")}<span style="flex:1">${L("直接记入，不用确认", "Record without confirming")}</span><button class="sw ${as ? "on" : ""}" data-a="autoSaveT" role="switch" aria-checked="${as}" aria-label="${L("直接记入", "Record directly")}"></button></div>
       ${row("autoLog", "doc", L("识别记录", "Detection log"), "")}</div>`; })() : ""}
     <div class="group-t">安全与隐私</div><div class="card" style="padding:4px 16px">
       ${row("lockSet", "lock", "应用锁", LK && LK.hash ? "已开启" : "未开启", LK && LK.hash ? "关闭 ›" : "开启 ›")}
@@ -3067,6 +3104,8 @@ const A = {
   autoIgnore: (d) => { window.AndroidBridge.removePending(d.id); refreshPending(); toast(L("已忽略", "Ignored")); },
   autoIgnoreAll: () => confirmSheet(L("全部忽略", "Ignore all"), "", L("全部忽略", "Ignore all"), async () => { for (const p of S.pending) window.AndroidBridge.removePending(p.id); refreshPending(); }, false),
   autoAccess: () => window.AndroidBridge.openAccess(),
+  autoScreen: () => window.AndroidBridge.openScreen(),
+  autoSaveT: () => { let on = true; try { on = !window.AndroidBridge.getAutoSave(); window.AndroidBridge.setAutoSave(on); } catch (e) {} S._keepScroll = true; render(); if (on) refreshPending(); },
   autoLog: () => openAutoLog(),
   autoLogClear: () => { window.AndroidBridge.clearLog(); closeSheet(); toast(L("已清空", "Cleared")); },
   fPhoto: () => { const f = $("#photoIn"); f.value = ""; f.click(); },
@@ -3242,6 +3281,7 @@ const A = {
 };
 /** 快捷指令打开网址时带上 ?add=25&note=… 或 ?text=识别出的文字，打开预填好的记账面板，仍需确认 */
 function afterReady() {
+  if (ANDROID) setTimeout(() => refreshPending(), 0);
   let q; try { q = new URLSearchParams(location.search); } catch (e) { return; }
   if (!q.has("add") && !q.has("text")) return;
   try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) {}

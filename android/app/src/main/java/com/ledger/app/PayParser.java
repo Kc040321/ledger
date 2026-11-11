@@ -20,6 +20,8 @@ public final class PayParser {
         public String account = ""; // 微信 / 支付宝 / 信用卡 / 银行卡 / 云闪付
         public String source = "";  // 显示用来源
         public String bank = "";    // 短信签名里的银行名
+        public long time = 0;       // 交易时间（屏幕上读到的），0 表示用通知时间
+        public String orderNo = ""; // 订单号，用来去重
         @Override public String toString() {
             return type + " " + amount + " merchant=" + merchant + " account=" + account + " source=" + source + " bank=" + bank;
         }

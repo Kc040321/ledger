@@ -174,6 +174,22 @@ public class MainActivity extends Activity {
             });
         }
 
+        @JavascriptInterface public boolean hasScreen() {
+            String flat = Settings.Secure.getString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            return flat != null && flat.contains(getPackageName() + "/");
+        }
+
+        @JavascriptInterface public void openScreen() {
+            runOnUiThread(() -> {
+                try { startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); }
+                catch (ActivityNotFoundException e) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
+            });
+        }
+
+        @JavascriptInterface public boolean getAutoSave() { return PendingStore.autoSave(MainActivity.this); }
+
+        @JavascriptInterface public void setAutoSave(boolean on) { PendingStore.setAutoSave(MainActivity.this, on); }
+
         @JavascriptInterface public String getLog() { return PendingStore.getLog(MainActivity.this); }
 
         @JavascriptInterface public void clearLog() { PendingStore.clearLog(MainActivity.this); }
