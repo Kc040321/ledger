@@ -29,7 +29,20 @@ final class PendingStore {
         try {
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject o = arr.getJSONObject(i);
-                if (PayParser.sameTx(o.getLong("amount"), o.getString("type"), o.getLong("time"), r.amount, r.type, time)) {
+                long oa = o.getLong("amount");
+                boolean near = o.getString("type").equals(r.type) && Math.abs(o.getLong("time") - time) <= 3 * 60 * 1000L;
+                // 先来了一条没金额的转账通知，随后银行短信带来了金额：补上金额
+                if (near && oa == 0 && r.amount > 0) {
+                    o.put("amount", r.amount);
+                    if (!o.optString("source").contains(r.source)) o.put("source", o.optString("source") + " + " + r.source);
+                    o.put("raw", o.optString("raw") + "\n" + raw);
+                    sp(c).edit().putString("pending", arr.toString()).apply();
+                    return null;
+                }
+                if (near && r.amount == 0 && (oa > 0 || o.optString("merchant").equals(r.merchant))) {
+                    return null; // 同一笔的重复通知
+                }
+                if (r.amount > 0 && PayParser.sameTx(o.getLong("amount"), o.getString("type"), o.getLong("time"), r.amount, r.type, time)) {
                     String src = o.optString("source");
                     if (!src.contains(r.source)) o.put("source", src + " + " + r.source);
                     if (o.optString("merchant").isEmpty() && !r.merchant.isEmpty()) o.put("merchant", r.merchant);

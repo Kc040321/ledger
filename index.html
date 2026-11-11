@@ -335,7 +335,7 @@ body{letter-spacing:.005em}
 <nav id="tabs" class="tabs" aria-label="主导航"></nav>
 <input type="file" id="fileIn" hidden>
 <input type="file" id="photoIn" accept="image/*" hidden>
-<script>window.LEDGER_PWA=true;window.LEDGER_ANDROID=false;window.LEDGER_VERSION="2026.11.10-1934";</script>
+<script>window.LEDGER_PWA=true;window.LEDGER_ANDROID=false;window.LEDGER_VERSION="2026.11.11-1304";</script>
 <script>
 const I18N_EN = {
 "存储空间已满，请先删除一些旧记录": "Storage is full — delete some old records first",
@@ -1957,7 +1957,7 @@ function autoCard() {
     const ic = /微信/.test(p.source) ? icoHtml("wallet", 145) : /支付宝/.test(p.source) ? icoHtml("wallet", 205) : icoHtml("bank", 210);
     const w = new Date(p.time), when = short(C.ymd(w)) + " " + C.pad(w.getHours()) + ":" + C.pad(w.getMinutes());
     return `<div class="due">${ic}<div class="mid tap" data-a="autoOk" data-id="${esc(p.id)}"><div>${esc(p.merchant || p.source)}${ty === "refund" ? ` <span class="tag a">${L("可能是退款", "maybe a refund")}</span>` : ""}</div><div class="tiny muted">${esc(when)} · ${esc(p.source)}</div></div>
-      <span class="num ${ty === "exp" ? "" : "inc"}" style="font-weight:600">${ty === "exp" ? "−" : "+"}${F$(p.amount)}</span><button style="background:var(--chip)" data-a="autoIgnore" data-id="${esc(p.id)}">${L("忽略", "Ignore")}</button><button style="background:var(--accent);color:var(--accent-ink)" data-a="autoOk" data-id="${esc(p.id)}">${L("记入", "Record")}</button></div>`;
+      <span class="num ${ty === "exp" || !p.amount ? "" : "inc"}" style="font-weight:600">${p.amount ? (ty === "exp" ? "−" : "+") + F$(p.amount) : `<span class="muted">¥ ?</span>`}</span><button style="background:var(--chip)" data-a="autoIgnore" data-id="${esc(p.id)}">${L("忽略", "Ignore")}</button><button style="background:var(--accent);color:var(--accent-ink)" data-a="autoOk" data-id="${esc(p.id)}">${L("记入", "Record")}</button></div>`;
   }).join("");
   return `<div class="card"><div class="card-h"><h2>${L("自动识别的交易", "Detected transactions")}</h2>${S.pending.length > 1 ? `<button class="link" data-a="autoIgnoreAll">${L("全部忽略", "Ignore all")}</button>` : ""}</div>${rows}
     ${S.pending.length > 8 ? `<p class="tiny muted" style="margin:6px 0 0">${L(`还有 ${S.pending.length - 8} 笔`, `${S.pending.length - 8} more`)}</p>` : ""}</div>`;
@@ -3068,7 +3068,7 @@ const A = {
     const p = S.pending.find((x) => x.id === d.id); if (!p) return;
     const ty = p.type === "exp" ? "exp" : "inc";
     const q = C.parseQuick([p.merchant, p.account, p.raw].filter(Boolean).join(" "), S.meta, today());
-    openForm({ type: ty, expr: centsToExpr(p.amount), note: p.merchant || "", date: C.ymd(new Date(p.time)), acct: q.acct || undefined, cat: q.type === ty && q.cat ? q.cat : undefined, pendingId: p.id });
+    openForm({ type: ty, expr: p.amount ? centsToExpr(p.amount) : "", note: p.merchant || "", date: C.ymd(new Date(p.time)), acct: q.acct || undefined, cat: q.type === ty && q.cat ? q.cat : undefined, pendingId: p.id });
     F.info = p.source + (p.type === "refund" ? L(" · 可能是退款", " · maybe a refund") : "");
     refreshForm();
   },

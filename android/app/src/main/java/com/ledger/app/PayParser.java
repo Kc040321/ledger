@@ -38,6 +38,10 @@ public final class PayParser {
     private static final Pattern EXPENSE_WORDS = Pattern.compile("(消费|支出|支付|付款|扣款|扣费|转出|已付|代扣|取现)");
     private static final Pattern SKIP_BEFORE = Pattern.compile("(余额|可用|额度|积分|优惠|立减|减免|抵扣|红包抵|最低还款|账单金额|应还|限额|手续费为)\\s*[:：为是]?\\s*$");
     private static final Pattern NOISE = Pattern.compile("(验证码|校验码|动态码|密码|登录|注册|快递|取件|广告|退订|领取.{0,4}红包|理财|贷款|借款|额度提升)");
+    // 支付宝/微信转账、红包通知常常不带金额（比如「[转账]」「你收到一笔转账」），先记下来，金额让用户填
+    private static final Pattern TRANSFER = Pattern.compile("(转账|红包|向你转|给你转|转给你|收到一笔|已收款|收钱)");
+    private static final Pattern OUTGOING = Pattern.compile("(转账成功|已转账|你向|转给了|付款成功|已付款|支付成功)");
+    private static final Pattern GENERIC_TITLE = Pattern.compile("^(支付宝|微信|微信支付|支付助手|服务提醒|转账|收钱码|收款|通知|消息|新消息|.*\\d.*)$");
     private static final Pattern SMS_SIGN = Pattern.compile("[【\\[]([^】\\]]{2,12})[】\\]]");
 
     private PayParser() {}
@@ -50,7 +54,8 @@ public final class PayParser {
         String noComma = t;
         boolean isPayApp = PKG_WECHAT.equals(pkg) || PKG_ALIPAY.equals(pkg) || PKG_UNIONPAY.equals(pkg);
         if (NOISE.matcher(t).find() && !isPayApp) return null;
-        if (!TX_WORDS.matcher(t).find()) return null;
+        boolean transferish = isPayApp && TRANSFER.matcher(t).find();
+        if (!TX_WORDS.matcher(t).find() && !transferish) return null;
 
         // 找金额：必须有 ¥/人民币/RMB 前缀或「元」后缀，或者是支付 App 里带两位小数的数字
         List<long[]> cands = new ArrayList<>(); // {amount, start, score}
@@ -72,7 +77,7 @@ public final class PayParser {
             if (twoDec) score += 1;
             cands.add(new long[]{v, m.start(), score});
         }
-        if (cands.isEmpty()) return null;
+        if (cands.isEmpty()) return transferish ? unknownAmount(pkg, title, t) : null;
         long[] best = cands.get(0);
         for (long[] c : cands) if (c[2] > best[2]) best = c;
 
@@ -111,6 +116,23 @@ public final class PayParser {
         for (String p : pats) {
             Matcher mm = Pattern.compile(p).matcher(t);
             if (mm.find()) { r.merchant = mm.group(1).replaceAll("[()]$", ""); break; }
+        }
+        return r;
+    }
+
+    /** 有转账迹象但没写金额：金额记 0，打开记账本时让用户填 */
+    private static Result unknownAmount(String pkg, String title, String t) {
+        Result r = new Result();
+        r.amount = 0;
+        r.type = OUTGOING.matcher(t).find() ? "exp" : "inc";
+        if (PKG_WECHAT.equals(pkg)) { r.source = "微信"; r.account = t.contains("零钱") ? "微信零钱" : "微信"; }
+        else if (PKG_ALIPAY.equals(pkg)) { r.source = "支付宝"; r.account = "支付宝"; }
+        else { r.source = "云闪付"; r.account = "银行卡"; }
+        String tt = title == null ? "" : title.trim();
+        if (!tt.isEmpty() && tt.length() <= 16 && !GENERIC_TITLE.matcher(tt).matches()) r.merchant = tt;
+        if (r.merchant.isEmpty()) {
+            Matcher mm = Pattern.compile("([^,，。:：;；\\s\\[\\]]{1,12}?)(?:向你|给你)转").matcher(t);
+            if (mm.find()) r.merchant = mm.group(1);
         }
         return r;
     }

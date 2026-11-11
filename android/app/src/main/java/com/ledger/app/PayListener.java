@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 public class PayListener extends NotificationListenerService {
     static final String CHANNEL = "auto_record";
     static final String ACTION_OPEN = "com.ledger.app.OPEN_PENDING";
-    private static final Pattern TX_HINT = Pattern.compile("(消费|支出|支付|付款|扣款|转出|收入|入账|到账|转入|存入|收款|退款|交易|转账|¥|￥|元)");
+    private static final Pattern TX_HINT = Pattern.compile("(消费|支出|支付|付款|扣款|转出|收入|入账|到账|转入|存入|收款|退款|交易|转账|红包|¥|￥|元)");
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
@@ -36,9 +36,10 @@ public class PayListener extends NotificationListenerService {
             String text = str(big != null ? big : e.getCharSequence(Notification.EXTRA_TEXT));
             if (title.isEmpty() && text.isEmpty()) return;
             String all = title + " " + text;
-            if (!TX_HINT.matcher(all).find()) return; // 和钱无关，直接忽略
-
             String pkg = sbn.getPackageName();
+            // 支付宝可能隐藏通知内容，它的通知都先记进排查日志；其他 App 和钱无关的直接忽略
+            if (!TX_HINT.matcher(all).find() && !PayParser.PKG_ALIPAY.equals(pkg)) return;
+
             PayParser.Result r = PayParser.parse(pkg, title, text);
             long time = sbn.getPostTime();
             PendingStore.log(this, pkg, title, text, r, time);
@@ -61,10 +62,10 @@ public class PayListener extends NotificationListenerService {
         }
         Intent open = new Intent(this, MainActivity.class).setAction(ACTION_OPEN).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pi = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        String yuan = String.format(Locale.ROOT, "%d.%02d", r.amount / 100, r.amount % 100);
-        String kind = "inc".equals(r.type) ? "收入" : "refund".equals(r.type) ? "退款" : "支出";
-        String title = "记一笔？" + kind + " ¥" + yuan + " · " + r.source;
-        String body = (r.merchant.isEmpty() ? "" : r.merchant + " · ") + "点一下打开记账本确认";
+        String yuan = r.amount > 0 ? " ¥" + String.format(Locale.ROOT, "%d.%02d", r.amount / 100, r.amount % 100) : "";
+        String kind = r.amount == 0 ? "转账" : "inc".equals(r.type) ? "收入" : "refund".equals(r.type) ? "退款" : "支出";
+        String title = "记一笔？" + r.source + kind + yuan;
+        String body = (r.merchant.isEmpty() ? "" : r.merchant + " · ") + (r.amount == 0 ? "填金额" : "确认");
         Notification.Builder b = new Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat)
             .setContentTitle(title)
